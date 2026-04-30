@@ -1,0 +1,64 @@
+<mujoco model="kuka_scene">
+  <!--
+  ═══════════════════════════════════════════════════════════════════════
+   scene/world.xml  —  PURE ASSEMBLER.  Do not add geometry here.
+   Swap any component by replacing its include file:
+     includes/arm.xml    → robot module (position defined inside)
+     includes/table.xml  → furniture module
+     includes/lights.xml → lighting rig module
+  ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- ── Default free-camera framing ─────────────────────────────── -->
+  <!-- center = middle of the table workspace, extent = scene radius   -->
+  <!-- This makes the viewer open already zoomed in on the scene.      -->
+  <statistic center="0 0.1 0.9" extent="1.5"/>
+
+  <!-- ── Physics options (Task 2.4) ──────────────────────────────── -->
+  <!--
+    timestep = 0.001 s  → 1000 Hz physics
+    gravity  = -9.81 m/s² in Z
+    integrator = RK4    → better stability for rigid kinematic chains
+    solver = Newton (default for MuJoCo 3.x)
+  -->
+  <option timestep="0.001"
+          gravity="0 0 -9.81"
+          integrator="RK4"/>
+
+  <!-- ── Component modules ────────────────────────────────────────── -->
+  <include file="includes/arm.xml"/>
+  <include file="includes/table.xml"/>
+  <include file="includes/lights.xml"/>
+  <include file="includes/objects.xml"/>
+
+  <!-- ── Visual / render settings ────────────────────────────────── -->
+  <visual>
+    <global offwidth="1280" offheight="720"/>
+    <!-- Dim headlight so directional key/fill lights define the mood -->
+    <headlight ambient="0.15 0.15 0.15" diffuse="0.2 0.2 0.2" specular="0 0 0"/>
+  </visual>
+
+  <!-- ── EM attachment equality constraint (Phase 6, Task 6.1) ──────── -->
+  <!-- Single weld between em_pad and metal_box, initially inactive.     -->
+  <!-- relpose is overwritten at runtime by em_activate() with the       -->
+  <!-- CURRENT relative pose of the box w.r.t. em_pad at snap time —    -->
+  <!-- so the box stays exactly at the EM face and is never rotated.     -->
+  <equality>
+    <weld name="em_weld" body1="em_pad" body2="metal_box"
+          relpose="0 0 0 1 0 0 0" active="false"/>
+  </equality>
+
+  <!-- ── World-level geometry (not part of any swappable component) -->
+  <worldbody>
+
+    <!-- Ground plane: 10 m × 10 m, medium grey -->
+    <geom name="floor"
+          type="plane"
+          size="5 5 0.1"
+          rgba="0.55 0.55 0.55 1"
+          condim="3"
+          contype="2" conaffinity="3"/>
+
+  </worldbody>
+
+</mujoco>

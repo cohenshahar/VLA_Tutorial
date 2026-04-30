@@ -1,0 +1,41 @@
+<mujoco model="kuka_kr6r900sixx">
+  <compiler angle="radian" meshdir="/home/shahar/Desktop/phase4/VLATraining/sim/assets/urdf/meshes/"/>
+
+  <asset>
+    <mesh name="base_link" content_type="model/stl" file="base_link.stl"/>
+    <mesh name="link_1" content_type="model/stl" file="link_1.stl"/>
+    <mesh name="link_2" content_type="model/stl" file="link_2.stl"/>
+    <mesh name="link_3" content_type="model/stl" file="link_3.stl"/>
+    <mesh name="link_4" content_type="model/stl" file="link_4.stl"/>
+    <mesh name="link_5" content_type="model/stl" file="link_5.stl"/>
+    <mesh name="link_6" content_type="model/stl" file="link_6.stl"/>
+  </asset>
+
+  <worldbody>
+    <geom type="mesh" rgba="0.3 0.3 0.3 1" mesh="base_link"/>
+    <body name="link_1" pos="0 0 0.4">
+      <joint name="joint_a1" pos="0 0 0" axis="0 0 -1" range="-2.96706 2.96706"/>
+      <geom type="mesh" rgba="1 0.42 0 1" mesh="link_1"/>
+      <body name="link_2" pos="0.025 0 0">
+        <joint name="joint_a2" pos="0 0 0" axis="0 1 0" range="-3.31613 0.785398"/>
+        <geom type="mesh" rgba="1 0.42 0 1" mesh="link_2"/>
+        <body name="link_3" pos="0.455 0 0">
+          <joint name="joint_a3" pos="0 0 0" axis="0 1 0" range="-2.0944 2.72271"/>
+          <geom type="mesh" rgba="1 0.42 0 1" mesh="link_3"/>
+          <body name="link_4" pos="0 0 0.035">
+            <joint name="joint_a4" pos="0 0 0" axis="-1 0 0" range="-3.22886 3.22886"/>
+            <geom type="mesh" rgba="1 0.42 0 1" mesh="link_4"/>
+            <body name="link_5" pos="0.42 0 0">
+              <joint name="joint_a5" pos="0 0 0" axis="0 1 0" range="-2.0944 2.0944"/>
+              <geom type="mesh" rgba="1 0.42 0 1" mesh="link_5"/>
+              <body name="link_6" pos="0.08 0 0">
+                <joint name="joint_a6" pos="0 0 0" axis="-1 0 0" range="-6.10865 6.10865"/>
+                <geom type="mesh" rgba="0.3 0.3 0.3 1" mesh="link_6"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

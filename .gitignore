@@ -1,0 +1,25 @@
+# Python virtual environment
+phase4_env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# MuJoCo generated files
+*.mjb
+MUJOCO_LOG.TXT
+
+# Output/generated assets
+VLATraining/sim/outputs/_em_pickup_frames/
+
+# ROS build artifacts
+VLATraining/vla_ws/build/
+VLATraining/vla_ws/install/
+VLATraining/vla_ws/log/
+
+# OS
+.DS_Store
+*.swp

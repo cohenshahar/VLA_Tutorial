@@ -1,0 +1,212 @@
+<?xml version="1.0"?>
+<!--
+Standalone patched xacro for KUKA KR6 R900 sixx.
+Replaces $(find kuka_resources) with inline stubs and
+replaces package://kuka_kr6_support with absolute mesh paths.
+Generated from kuka_experimental/kuka_kr6_support/urdf/kr6r900sixx_macro.xacro
+-->
+<robot name="kuka_kr6r900sixx" xmlns:xacro="http://wiki.ros.org/xacro">
+
+  <!-- ── Inline stubs replacing kuka_resources/urdf/common_materials.xacro ── -->
+  <material name="kuka_orange">
+    <color rgba="1.0 0.42 0.0 1.0"/>
+  </material>
+  <material name="kuka_pedestal">
+    <color rgba="0.3 0.3 0.3 1.0"/>
+  </material>
+  <xacro:macro name="material_kuka_orange">
+    <material name="kuka_orange"/>
+  </xacro:macro>
+  <xacro:macro name="material_kuka_pedestal">
+    <material name="kuka_pedestal"/>
+  </xacro:macro>
+
+  <!-- ── Robot links ── -->
+  <xacro:property name="mesh_root"
+    value="/home/shahar/Desktop/phase4/VLATraining/sim/assets/urdf/kuka_experimental/kuka_kr6_support/meshes"/>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/visual/base_link.dae"/>
+      </geometry>
+      <xacro:material_kuka_pedestal/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/collision/base_link.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/visual/link_1.dae"/>
+      </geometry>
+      <xacro:material_kuka_orange/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/collision/link_1.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6r900sixx/visual/link_2.dae"/>
+      </geometry>
+      <xacro:material_kuka_orange/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6r900sixx/collision/link_2.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_3">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/visual/link_3.dae"/>
+      </geometry>
+      <xacro:material_kuka_orange/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/collision/link_3.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_4">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6r900sixx/visual/link_4.dae"/>
+      </geometry>
+      <xacro:material_kuka_orange/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6r900sixx/collision/link_4.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_5">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/visual/link_5.dae"/>
+      </geometry>
+      <xacro:material_kuka_orange/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/collision/link_5.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_6">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/visual/link_6.dae"/>
+      </geometry>
+      <xacro:material_kuka_pedestal/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${mesh_root}/kr6_agilus/collision/link_6.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Flange + tool frames -->
+  <link name="flange"/>
+  <link name="base"/>
+  <link name="tool0"/>
+
+  <!-- ── Joints ── -->
+  <joint name="joint_a1" type="revolute">
+    <origin xyz="0 0 0.400" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="link_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="0" lower="${-radians(170)}" upper="${radians(170)}" velocity="${radians(360)}"/>
+  </joint>
+
+  <joint name="joint_a2" type="revolute">
+    <origin xyz="0.025 0 0" rpy="0 0 0"/>
+    <parent link="link_1"/>
+    <child link="link_2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="0" lower="${-radians(190)}" upper="${radians(45)}" velocity="${radians(300)}"/>
+  </joint>
+
+  <joint name="joint_a3" type="revolute">
+    <origin xyz="0.455 0 0" rpy="0 0 0"/>
+    <parent link="link_2"/>
+    <child link="link_3"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="0" lower="${-radians(120)}" upper="${radians(156)}" velocity="${radians(360)}"/>
+  </joint>
+
+  <joint name="joint_a4" type="revolute">
+    <origin xyz="0 0 0.035" rpy="0 0 0"/>
+    <parent link="link_3"/>
+    <child link="link_4"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="0" lower="${-radians(185)}" upper="${radians(185)}" velocity="${radians(381)}"/>
+  </joint>
+
+  <joint name="joint_a5" type="revolute">
+    <origin xyz="0.420 0 0" rpy="0 0 0"/>
+    <parent link="link_4"/>
+    <child link="link_5"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="0" lower="${-radians(120)}" upper="${radians(120)}" velocity="${radians(388)}"/>
+  </joint>
+
+  <joint name="joint_a6" type="revolute">
+    <origin xyz="0.080 0 0" rpy="0 0 0"/>
+    <parent link="link_5"/>
+    <child link="link_6"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="0" lower="${-radians(350)}" upper="${radians(350)}" velocity="${radians(615)}"/>
+  </joint>
+
+  <joint name="joint_a6-flange" type="fixed">
+    <parent link="link_6"/>
+    <child link="flange"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="base_link-base" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="base"/>
+  </joint>
+
+  <joint name="flange-tool0" type="fixed">
+    <parent link="flange"/>
+    <child link="tool0"/>
+    <origin xyz="0 0 0" rpy="0 ${radians(90)} 0"/>
+  </joint>
+
+</robot>

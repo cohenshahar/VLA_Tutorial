@@ -1,0 +1,99 @@
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px'}}}%%
+graph TB
+
+  subgraph FUTURE["🔮  Phase 2+ — Monitoring & Recovery"]
+    direction LR
+    TF[TimesFM Observer<br/>6 Hz · kinematic residual]
+    SV[Semantic Verifier<br/>~0.5 Hz · VLM postcondition]
+    EP[Emergency Planner<br/>on-demand · re-anchor]
+    TF -->|kinematic anomaly| SV
+    SV -->|failure signal| EP
+  end
+
+  subgraph SCOPE["✅  Milestone 1 Scope — Full Realistic Simulation Stack"]
+    direction TB
+
+    subgraph TTM["Task Tree Manager  (3-level · Python)"]
+      direction LR
+      TRoot["Task: EM Pick-and-place"]
+      TS1["S1: Approach<br/>postcond: proximity < 2 cm"]
+      TS2["S2: Attach & Lift<br/>postcond: ft.Fz > 4.5 N AND em_ON"]
+      TS3["S3: Transport & Release<br/>postcond: target_contact AND em_OFF"]
+      TRoot --> TS1 --> TS2 --> TS3
+    end
+
+    subgraph VLA["OpenVLA Node  (HuggingFace · GPU · 6 Hz)"]
+      OV["OpenVLA 7B  —  Llama-2 + DINOv2 + SigLIP<br/>Input: wrist RGB 224×224 + language instruction<br/>Output: 6-DoF Δ joints + EM command (dim 7)"]
+    end
+
+    subgraph BUS["ROS2 Humble  /  Python SimBus"]
+      direction LR
+      B1["/joint_states  100 Hz"]
+      B2["/joint_torques  100 Hz"]
+      B3["/joint_commands  on-demand"]
+      B4["/ft_sensor  100 Hz"]
+      B5["/proximity  50 Hz"]
+      B6["/em_state  on-change"]
+      B7["/target_contact  50 Hz"]
+      B8["/camera/wrist  6 Hz"]
+      B9["/camera/overhead  6 Hz"]
+      B10["/camera/side  6 Hz"]
+      B11["/task_tree/status  on-change"]
+    end
+
+    subgraph MUJOCO["MuJoCo  (headless · pip install mujoco · Colab/Kaggle GPU)"]
+      direction TB
+
+      subgraph ARM["KUKA 6-DOF Arm  (BGU lab URDF → MJCF)"]
+        JNT["6× Revolute joints<br/>pos/vel/torque actuators<br/>Realistic inertia · limits · friction"]
+        EE["End-effector link"]
+      end
+
+      subgraph EEQ["Electromagnetic End-effector"]
+        EM["EM Actuator<br/>weld equality constraint<br/>active ↔ inactive"]
+        FT["F/T Sensor (6-axis)<br/>mujoco type: force + torque"]
+        PROX["Proximity Sensor<br/>mujoco type: rangefinder"]
+        WCAM["Wrist Camera<br/>RGB 640×480 · 6 Hz<br/>Moves with end-effector"]
+      end
+
+      subgraph ENV["Environment  (fixed bodies)"]
+        TABLE["Table<br/>Rigid · friction (1.0, 0.005, 0.0001)"]
+        BOX["Metal box<br/>free body · freejoint<br/>mass: 0.5 kg · 10×10×10 cm"]
+        TGT["Target zone<br/>visual geom + touch sensor"]
+        OCAM["Overhead Camera<br/>RGB 640×480 · 6 Hz · fixed"]
+        SCAM["Side Camera<br/>RGB 640×480 · 6 Hz · 45° fixed"]
+      end
+
+      JNT --> EE
+      EE --- EEQ
+      EEQ -.->|weld constraint| BOX
+    end
+
+    EP -.->|re-anchor cmd Phase 2| TTM
+    TTM -->|language instruction| OV
+    B8 -->|wrist RGB| OV
+    OV -->|6-DoF Δ joints + EM cmd| B3
+    B3 -->|set_ctrl| JNT
+    JNT -->|qpos · qvel| B1
+    JNT -->|actuator_force| B2
+    FT -->|wrench| B4
+    PROX -->|distance| B5
+    EM -->|active flag| B6
+    TGT -->|contact bool| B7
+    WCAM -->|numpy RGB| B8
+    OCAM -->|numpy RGB| B9
+    SCAM -->|numpy RGB| B10
+    B1 & B4 & B5 & B6 & B7 -->|sensor readings| TTM
+    B9 & B10 -->|env views| TTM
+    TTM -->|subtask JSON| B11
+  end
+
+  style FUTURE fill:#f5f5f5,stroke:#ccc,stroke-dasharray:6 4,color:#555
+  style SCOPE fill:#f0f7ff,stroke:#3b82f6
+  style TTM fill:#fff1f2,stroke:#f43f5e
+  style VLA fill:#fdf4ff,stroke:#a855f7
+  style BUS fill:#f0fdf4,stroke:#22c55e
+  style MUJOCO fill:#fff8ed,stroke:#f59e0b
+  style ARM fill:#fffbeb,stroke:#fbbf24
+  style EEQ fill:#fef3c7,stroke:#d97706
+  style ENV fill:#fffbeb,stroke:#fbbf24

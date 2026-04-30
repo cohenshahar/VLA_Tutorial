@@ -1,0 +1,29 @@
+<mujoco model="kuka_test">
+  <!--
+    scene/world_test.xml  —  Minimal test world: arm + floor + lights, NO table.
+    Use this for joint tuning so table geometry cannot interfere.
+    Swap back to world.xml when full scene is needed.
+  -->
+
+  <option timestep="0.001"
+          gravity="0 0 -9.81"
+          integrator="RK4"/>
+
+  <include file="includes/arm.xml"/>
+  <include file="includes/lights.xml"/>
+
+  <visual>
+    <global offwidth="1280" offheight="720"/>
+    <headlight ambient="0.15 0.15 0.15" diffuse="0.2 0.2 0.2" specular="0 0 0"/>
+  </visual>
+
+  <worldbody>
+    <geom name="floor"
+          type="plane"
+          size="5 5 0.1"
+          rgba="0.45 0.45 0.45 1"
+          condim="3"
+          contype="2" conaffinity="3"/>
+  </worldbody>
+
+</mujoco>
