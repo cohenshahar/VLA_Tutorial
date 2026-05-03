@@ -36,8 +36,8 @@ _GAINS = {
 apply_gains(model, _GAINS)
 
 ACT  = {f"a{i+1}": model.actuator(f"act_a{i+1}").id for i in range(6)}
-SNAP  = {"a1":  0, "a2": -60, "a3": 50, "a4": 0, "a5": 30, "a6": 0}
-CARRY = {"a1": 45, "a2": -60, "a3": 50, "a4": 0, "a5": 30, "a6": 0}  # A1 rotated 45°
+SNAP  = {"a1":  0, "a2": -55, "a3": 90, "a4": 0, "a5": 55, "a6": 0}  # EM face points -Z (straight down)
+CARRY = {"a1": 45, "a2": -55, "a3": 90, "a4": 0, "a5": 55, "a6": 0}  # A1 rotated 45°
 
 em_site_id  = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE,  "em_contact_site")
 box_bid     = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY,  "metal_box")
@@ -86,17 +86,26 @@ if not can:
     print(f"  Site distance = {d*100:.1f} cm — arm not close enough")
     raise SystemExit(1)
 
+# Zero all joint velocities before weld activation.
+# After 3000 convergence steps the arm is at its gravity-equilibrium (which
+# differs slightly from the nominal joint angles due to KP/gravity sag) but
+# may still carry small residual momentum.  Zeroing qdot while preserving qpos
+# leaves the arm at its converged equilibrium with zero kinetic energy, so the
+# sudden addition of the 0.5 kg box mass at weld activation cannot excite
+# growing oscillation and collapse the arm configuration.
+data.qvel[:] = 0.0
+data.qpos[box_qpa:box_qpa+7] = box_init   # re-pin box (overridden by mj_forward above)
+mujoco.mj_forward(model, data)
+print(f"  Velocities zeroed; arm held at gravity-equilibrium before weld activation.")
+
 # ── Step 4: activate weld ─────────────────────────────────────────────────
 print("\nStep 4: activating weld via em_activate() …")
-data.qpos[box_qpa:box_qpa+7] = box_init
-data.qvel[box_doa:box_doa+6] = 0.0
-mujoco.mj_forward(model, data)
 
 ok = em_activate(model, data, threshold_m=0.05)
 print(f"  em_activate returned: {ok}")
 print(f"  data.eq_active[weld] = {data.eq_active[weld_id]}")
-print(f"  eq_data relpos  = {model.eq_data[weld_id, 0:3].round(4)}")
-print(f"  eq_data relquat = {model.eq_data[weld_id, 3:7].round(4)}")
+print(f"  eq_data relpos  = {model.eq_data[weld_id, 3:6].round(4)}")
+print(f"  eq_data relquat = {model.eq_data[weld_id, 6:10].round(4)}")
 box_z_at_activation = float(data.xpos[box_bid][2])
 print(f"  Box Z at activation: {box_z_at_activation:.4f}")
 

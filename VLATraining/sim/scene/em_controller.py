@@ -114,10 +114,10 @@ def em_activate(model: mujoco.MjModel,
     assert abs(np.linalg.norm(rel_quat) - 1.0) < 1e-6, \
         f"rel_quat not unit: norm={np.linalg.norm(rel_quat)}"
 
-    # MuJoCo 3 weld eq_data layout (8 values per constraint):
-    #   [0:3] relpos | [3:7] relquat [w,x,y,z] | [7] torquescale
-    model.eq_data[weld_id, 0:3] = rel_pos
-    model.eq_data[weld_id, 3:7] = rel_quat
+    # MuJoCo 3 weld eq_data layout (11 values per constraint):
+    #   [0:3] anchor (body1 frame) | [3:6] relpos | [6:10] relquat [w,x,y,z] | [10] torquescale
+    model.eq_data[weld_id, 3:6]  = rel_pos
+    model.eq_data[weld_id, 6:10] = rel_quat
 
     model.eq_active0[weld_id] = 1
     data.eq_active[weld_id]   = 1
