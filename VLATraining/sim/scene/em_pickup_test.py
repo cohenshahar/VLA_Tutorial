@@ -22,6 +22,7 @@ import mujoco
 import numpy as np
 from PIL import Image
 
+from arm.load_arm import apply_gains
 from scene.em_controller import em_activate, em_deactivate
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -29,15 +30,6 @@ _GAINS = {
     "act_a1": (800., 80.), "act_a2": (800., 80.), "act_a3": (500., 50.),
     "act_a4": (300., 30.), "act_a5": (500., 50.), "act_a6": (300., 30.),
 }
-
-def _apply_gains(model):
-    for name, (kp, kv) in _GAINS.items():
-        ai = model.actuator(name).id
-        model.actuator_gainprm[ai, 0] = kp
-        model.actuator_biasprm[ai, 1] = -kp
-        model.actuator_biasprm[ai, 2] = -kv
-    for i in range(model.nv):
-        model.dof_armature[i] = 0.5
 
 def _set_joints(data, model, angles_deg: dict):
     for jname, deg in angles_deg.items():
@@ -61,7 +53,7 @@ def main():
 
     model = mujoco.MjModel.from_xml_path(str(sim_dir / "world.xml"))
     data  = mujoco.MjData(model)
-    _apply_gains(model)
+    apply_gains(model, _GAINS)
 
     # Find IDs
     em_site_id  = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE,  "em_contact_site")
@@ -80,7 +72,7 @@ def main():
 
     # ── Reset and place box under EM (top face 3 cm below EM site) ──
     mujoco.mj_resetData(model, data)
-    box_z = em_snap[2] - 0.05 - 0.03   # EM to box-top gap: 3 cm
+    box_z = em_snap[2] - 0.05 - 0.015  # EM to box-top gap: 1.5 cm (within 2 cm threshold)
     data.qpos[adr:adr+3]   = [em_snap[0], em_snap[1], box_z]
     data.qpos[adr+3:adr+7] = [1, 0, 0, 0]   # upright
     mujoco.mj_forward(model, data)

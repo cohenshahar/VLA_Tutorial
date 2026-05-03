@@ -25,6 +25,8 @@ import math
 import os
 import numpy as np
 import mujoco
+from arm.load_arm import apply_gains
+from arm.kinematics import ik_jacobian
 
 try:
     from PIL import Image
@@ -48,9 +50,6 @@ data  = mujoco.MjData(model)
 model.vis.global_.offwidth  = 1280
 model.vis.global_.offheight = 720
 
-# ── Apply proper gains to all actuators ──────────────────────────────────
-# XML kv=10 is too underdamped — arm oscillates for many seconds.
-# biasprm[1] must equal -gainprm[0] or the position equilibrium shifts.
 # Values tuned to match tune_j1.py results (tested 2026-04-29).
 _GAINS = {
     "act_a1": (800.0, 80.0),  # (KP, KV)
@@ -60,15 +59,7 @@ _GAINS = {
     "act_a5": (500.0, 50.0),
     "act_a6": (300.0, 30.0),
 }
-for name, (kp, kv) in _GAINS.items():
-    ai = model.actuator(name).id
-    model.actuator_gainprm[ai, 0] =  kp
-    model.actuator_biasprm[ai, 1] = -kp  # must match gainprm[0]
-    model.actuator_biasprm[ai, 2] = -kv
-
-# Add rotor inertia to every DOF — prevents numerical blow-up for light wrist links
-for i in range(model.nv):
-    model.dof_armature[i] = 0.5  # same value used in tune_j1.py for A1
+apply_gains(model, _GAINS)
 
 # Actuator indices (matches act_a1…act_a6 order)
 ACT = {f"a{i+1}": model.actuator(f"act_a{i+1}").id for i in range(6)}
@@ -77,6 +68,10 @@ JNT = {f"a{i+1}": model.joint(f"joint_a{i+1}") for i in range(6)}
 # Camera: diagonal view, shows full arm
 CAM_WIDE = dict(lookat=[0.0, 0.1, 1.1], distance=2.8, azimuth=140, elevation=-18)
 CAM_SIDE = dict(lookat=[0.0, 0.0, 1.0], distance=2.5, azimuth=90,  elevation=-15)
+
+# Reach pose used in Task 3.7 and as IK seed in Task 3.10
+REACH_DEG = {"a1": 0, "a2": -60, "a3": 50, "a4": 0, "a5": 30, "a6": 0}
+REACH_RAD = {k: math.radians(v) for k, v in REACH_DEG.items()}
 
 
 def _make_cam(lookat, distance, azimuth, elevation):
@@ -89,8 +84,8 @@ def _make_cam(lookat, distance, azimuth, elevation):
     return cam
 
 
-def reset():
-    """Instantly reset simulation to home (all joints 0, zero velocity)."""
+def reset() -> None:
+    """Reset all joints to home (0°) and zero velocity instantly."""
     mujoco.mj_resetData(model, data)
     data.qpos[:] = 0.0
     data.qvel[:] = 0.0
@@ -232,9 +227,6 @@ run_to_target({"a6": 0.0})
 # These extend the arm forward and down toward the table workspace.
 # ═══════════════════════════════════════════════════════════════════════════
 print("\n── Task 3.7: Reach pose (all joints) ──")
-REACH_DEG = {"a1": 0, "a2": -60, "a3": 50, "a4": 0, "a5": 30, "a6": 0}
-REACH_RAD = {k: math.radians(v) for k, v in REACH_DEG.items()}
-
 reset()
 run_to_target(REACH_RAD, steps=3000)   # 3 s to settle
 
@@ -264,56 +256,6 @@ print("  Task 3.8 PASS ✓")
 # ═══════════════════════════════════════════════════════════════════════════
 # Task 3.10 — Jacobian IK: reach a target XYZ position
 # ═══════════════════════════════════════════════════════════════════════════
-
-def ik_jacobian(model, data, target_xyz,
-                eef_body="link_6",
-                max_iter=500, tol=0.005, step=0.5):
-    """
-    Iteratively drive the end-effector to target_xyz using the Jacobian pseudoinverse.
-
-    This is a pure kinematic solver: it writes directly to data.qpos[:6] (bypassing
-    physics) until convergence, then syncs data.ctrl and settles with physics.
-
-    Returns the final data.qpos[:6] (joint angles in radians).
-    """
-    target = np.array(target_xyz, dtype=float)
-    eef_id = model.body(eef_body).id
-    jac_p  = np.zeros((3, model.nv))
-
-    for i in range(max_iter):
-        mujoco.mj_forward(model, data)
-        pos_err = target - data.xpos[eef_id]
-        err_norm = np.linalg.norm(pos_err)
-
-        if err_norm < tol:
-            print(f"  IK converged in {i+1} iterations  (err={err_norm*1000:.2f} mm)")
-            break
-
-        mujoco.mj_jacBody(model, data, jac_p, None, eef_id)
-        jac_arm = jac_p[:, :6]  # first 6 columns = arm DOFs
-
-        dq, _, _, _ = np.linalg.lstsq(jac_arm, pos_err, rcond=None)
-        data.qpos[:6] += step * dq
-
-        # Clamp to joint limits
-        for j in range(6):
-            jid = model.joint(f"joint_a{j+1}").id
-            lo, hi = model.jnt_range[jid]
-            data.qpos[j] = float(np.clip(data.qpos[j], lo, hi))
-    else:
-        print(f"  IK did NOT converge (final err={np.linalg.norm(target - data.xpos[eef_id])*1000:.1f} mm)")
-
-    # Capture kinematic result before physics settle
-    mujoco.mj_forward(model, data)
-    ik_eef_pos = data.xpos[eef_id].copy()
-
-    # Sync controllers and settle with physics (for visualization / subsequent steps)
-    data.ctrl[:6] = data.qpos[:6].copy()
-    for _ in range(1000):
-        mujoco.mj_step(model, data)
-
-    return data.qpos[:6].copy(), ik_eef_pos
-
 
 print("\n── Task 3.10: Jacobian IK → [0.4, 0.0, 0.95] ──")
 reset()

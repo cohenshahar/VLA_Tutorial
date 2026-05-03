@@ -1,8 +1,14 @@
 """
 Task 1.6 / 1.7 / 1.8 / 1.9 / 1.10 — KUKA KR6 R900 sixx arm loader.
 
-Provides load_arm_model(urdf_path) as the single entry point for all scripts
-that need the arm. Swap the arm in the future by changing this function only.
+Single entry point for loading the arm into MuJoCo.
+All other scripts import load_arm_model() from here.
+Swapping the arm in the future means changing this file only.
+
+Public API:
+    load_arm_model(urdf_path) -> MjModel
+    render_to_png(model, data, path, camera, width, height) -> None
+    apply_gains(model, gains, armature) -> None
 
 Usage (Tasks 1.6–1.10):
     python -m arm.load_arm
@@ -24,6 +30,9 @@ REVOLUTE_JOINT_NAMES = [
     "joint_a4", "joint_a5", "joint_a6",
 ]
 
+# MuJoCo joint type integer → name mapping (used in diagnostics)
+_JOINT_TYPE_NAMES = {0: "free", 1: "ball", 2: "slide", 3: "hinge"}
+
 # KUKA KR6 R900 sixx datasheet limits (degrees) for verification
 _DATASHEET_DEG = {
     "joint_a1": (-170, 170),
@@ -43,6 +52,46 @@ def load_arm_model(urdf_path: str = _DEFAULT_URDF) -> mujoco.MjModel:
     return model
 
 
+def apply_gains(
+    model: mujoco.MjModel,
+    gains: dict,
+    armature: float = 0.5,
+) -> None:
+    """Set PD gains and rotor inertia on all actuators. Call once after model load.
+
+    gains: {actuator_name: (kp, kv)}
+    armature: virtual rotor inertia added to every DOF (prevents wrist instability)
+    biasprm[1] must equal -gainprm[0] or position equilibrium shifts.
+    """
+    for name, (kp, kv) in gains.items():
+        ai = model.actuator(name).id
+        model.actuator_gainprm[ai, 0] =  kp
+        model.actuator_biasprm[ai, 1] = -kp
+        model.actuator_biasprm[ai, 2] = -kv
+    for i in range(model.nv):
+        model.dof_armature[i] = armature
+
+
+def render_to_png(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    path: str,
+    camera: int = -1,
+    width: int = 1280,
+    height: int = 720,
+) -> None:
+    """Render the current sim state offscreen and save to a PNG file."""
+    import PIL.Image
+    model.vis.global_.offwidth = width
+    model.vis.global_.offheight = height
+    with mujoco.Renderer(model, height=height, width=width) as renderer:
+        mujoco.mj_forward(model, data)
+        renderer.update_scene(data, camera=camera)
+        pixels = renderer.render()
+    PIL.Image.fromarray(pixels).save(path)
+    print(f"Saved render → {path}")
+
+
 if __name__ == "__main__":
     model = load_arm_model()
     data = mujoco.MjData(model)
@@ -51,7 +100,7 @@ if __name__ == "__main__":
     print(f"\nJoints ({model.njnt} total):")
     for i in range(model.njnt):
         jnt = model.joint(i)
-        jtype = {0: "free", 1: "ball", 2: "slide", 3: "hinge"}.get(jnt.type[0], str(jnt.type[0]))
+        jtype = _JOINT_TYPE_NAMES.get(jnt.type[0], str(jnt.type[0]))
         print(f"  [{i}] {jnt.name:30s}  type={jtype}")
 
     # ── Task 1.9: verify joint limits ──
@@ -65,23 +114,9 @@ if __name__ == "__main__":
         print(f"  {name}: [{lo_deg:+.1f}°, {hi_deg:+.1f}°]  datasheet [{ds_lo:+d}°, {ds_hi:+d}°]  {match}")
 
     # ── Task 1.10: offscreen render → outputs/arm_home_pose.png ──
-    outputs_dir = os.path.join(os.path.dirname(__file__), "..", "outputs")
-    outputs_dir = os.path.abspath(outputs_dir)
+    outputs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs"))
     os.makedirs(outputs_dir, exist_ok=True)
-    out_path = os.path.join(outputs_dir, "arm_home_pose.png")
-
-    # Set framebuffer size before creating Renderer (URDF <mujoco> tag is not picked up)
-    model.vis.global_.offwidth = 1280
-    model.vis.global_.offheight = 720
-
-    with mujoco.Renderer(model, height=720, width=1280) as renderer:
-        mujoco.mj_forward(model, data)
-        renderer.update_scene(data, camera=-1)  # default free camera
-        pixels = renderer.render()
-
-    import PIL.Image
-    PIL.Image.fromarray(pixels).save(out_path)
-    print(f"\nTask 1.10: saved render → {out_path}")
+    render_to_png(model, data, os.path.join(outputs_dir, "arm_home_pose.png"))
 
     # ── Task 1.7: open passive viewer ──
     print("\nTask 1.7: Opening MuJoCo passive viewer (close window to exit)...")
