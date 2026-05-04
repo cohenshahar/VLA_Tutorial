@@ -30,6 +30,7 @@
   <include file="includes/table.xml"/>
   <include file="includes/lights.xml"/>
   <include file="includes/objects.xml"/>
+  <include file="includes/cage.xml"/>
 
   <!-- ── Visual / render settings ────────────────────────────────── -->
   <visual>
@@ -58,6 +59,9 @@
           rgba="0.55 0.55 0.55 1"
           condim="3"
           contype="2" conaffinity="3"/>
+
+    <!-- Cameras are cage-mounted (see includes/cage.xml).
+         Wrist camera is on em_pad (see includes/arm.xml). -->
 
   </worldbody>
 
@@ -109,6 +113,11 @@
     <!--      Reports distance to first geom hit along site's local +Z axis. -->
     <!--      Returns -1.0 when no surface is hit within range.              -->
     <rangefinder name="sensor_proximity" site="em_contact_site"/>
+
+    <!-- 7.6  EM contact touch sensor ─────────────────────────────────── -->
+    <!--      Fires when em_touch_geom (on em_pad face) contacts the box.  -->
+    <!--      Returns total normal contact force in Newtons.               -->
+    <touch name="sensor_em_touch" site="em_touch_site"/>
   </sensor>
 
 </mujoco>
