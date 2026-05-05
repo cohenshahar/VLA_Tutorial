@@ -103,7 +103,7 @@
         -->
         <camera name="cam_overhead"
                 pos="0 0 0"
-                xyaxes="1 0 0  0 -1 0"
+                xyaxes="1 0 0  0 1 0"
                 fovy="75"/>
       </body>
 
@@ -142,7 +142,7 @@
         -->
         <camera name="cam_side"
                 pos="0 0 0"
-                xyaxes="0 -1 0  -0.306 0 0.952"
+                xyaxes="0 1 0  -0.306 0 0.952"
                 fovy="65"/>
       </body>
 

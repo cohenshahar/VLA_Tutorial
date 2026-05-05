@@ -183,8 +183,8 @@
 
                     <!-- Egocentric VLA camera — optical axis tilted 20° downward -->
                     <camera name="cam_wrist"
-                            pos="-0.02 0 0.05"
-                            xyaxes="0 1 0  0.342 0 0.940"
+                            pos="-0.02 0 0.10"
+                            xyaxes="0 1 0  -0.342 0 -0.940"
                             fovy="80"/>
 
                   </body><!-- em_pad -->

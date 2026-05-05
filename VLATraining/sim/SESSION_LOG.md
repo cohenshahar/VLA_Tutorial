@@ -5,6 +5,87 @@ Read this at the start of a new session to understand what was done and why.
 
 ---
 
+## Session 2026-05-05 — Phase 8: Camera Setup + Agent Skills
+
+### What changed
+
+| File | Type | Summary |
+|------|------|---------|
+| `scene/includes/cage.xml` | Fixed | `cam_overhead` and `cam_side` xyaxes corrected — were pointing wrong direction |
+| `scene/includes/arm.xml` | Fixed | `cam_wrist` xyaxes corrected + position raised to `z=0.10` to clear EE shadow |
+| `scene/camera_utils.py` | **NEW** | Phase 8 Task 8.8 — `render_camera()` + `CameraPublisher` class |
+| `scene/plot_sensors.py` | **NEW** | Phase 7 visualization — 4-panel sensor plot (pos/vel/torque/force+proximity) |
+| `.github/skills/end-of-day/SKILL.md` | **NEW** | End-of-day workflow skill — SESSION_LOG + PHASES + git commit + push |
+| `.github/skills/agent-dumber/SKILL.md` | **NEW** | Slow/systematic debug skill — minimal test, one question, one change |
+| `.github/skills/start-of-day/SKILL.md` | **NEW** | Start-of-day workflow skill — git pull, read context, activate env, ask before starting |
+| `.github/skills/ros2-sanity-check/SKILL.md` | **NEW** | ROS2 8-step diagnostic — sourced? built? rclpy? topics? Hz? |
+| `.github/skills/scene-snapshot/SKILL.md` | **NEW** | Render all 3 cameras + save to outputs/ — quick visual sanity check |
+
+### Design decisions
+
+**Camera xyaxes math:** MuJoCo renders along `-Z_cam` where `Z_cam = X_cam × Y_cam`.
+So `xyaxes="Xx Xy Xz  Yx Yy Yz"` renders in direction `-(X × Y)`.
+All 3 cameras had the sign wrong — they pointed away from the scene.
+
+Diagnostic approach used: minimal scene with 2 colored boxes (green above, blue below).
+Render → check which color appears → compute correct xyaxes via `np.cross` → fix one camera at a time.
+
+**Correct xyaxes:**
+```xml
+<!-- overhead: render dir = (0,0,-1) = straight down -->
+xyaxes="1 0 0  0 1 0"
+<!-- side: render dir = (-0.952, 0, -0.306) = toward workspace from right -->
+xyaxes="0 1 0  -0.306 0 0.952"
+<!-- wrist: render dir = (0.940, 0, -0.342) = forward + 20° down along arm -->
+xyaxes="0 1 0  -0.342 0 -0.940"
+```
+
+**CameraPublisher (camera_utils.py):** Lazy-init renderer, caches by `(id(model), width, height)`.
+`get_frames(model, data)` → `dict[str, ndarray]` (uint8 RGB, H×W×3).
+Default cameras: `["cam_overhead", "cam_side", "cam_wrist"]`.
+
+### Phase 8 task completion status
+
+| Task | File | Status |
+|------|------|--------|
+| 8.1 — cam_overhead in cage.xml | `scene/includes/cage.xml` | ✅ |
+| 8.2 — cam_side in cage.xml | `scene/includes/cage.xml` | ✅ |
+| 8.3 — cam_wrist in arm.xml | `scene/includes/arm.xml` | ✅ |
+| 8.4–8.7 — camera orientations verified | all cameras | ✅ |
+| 8.8 — camera_utils.py + CameraPublisher | `scene/camera_utils.py` | ✅ |
+| multicam video | `scene/record_multicam.py` | ✅ pre-existing |
+
+### Next session — entry point
+
+Phase 9: ROS2 Bridge (`VLATraining/vla_ws/src/mujoco_bridge/`)
+
+1. `colcon build --packages-select mujoco_bridge` — confirm package is found
+2. Task 9.2: hello-world node publishing `/bridge/status` (std_msgs/String, 1 Hz)
+3. Task 9.3: publish `/joint_states` at 100 Hz from `data.qpos`
+4. Continue Tasks 9.4–9.14 (F/T sensor, 3 camera topics, joint_commands subscriber)
+
+**Important for Phase 9:** rclpy lives in system Python, not the phase4 venv.
+Use `python3` (not `python`) for bridge nodes. Deactivate venv before ROS2 work.
+Full-source sequence: `source /opt/ros/humble/setup.bash && source vla_ws/install/setup.bash`
+
+---
+
+## Session 2026-05-05 — Phase 7: Sensor Suite (verified complete)
+
+### What was found / verified
+
+Phase 7 was already fully implemented in the codebase. This session verified all tasks pass:
+
+| File | Type | Summary |
+|------|------|---------|
+| `scene/world.xml` | Updated | Sensors 7.1–7.5 + `sensor_em_touch` bonus sensor |
+| `scene/test_sensors.py` | **NEW** | 5-assertion sensor readout test |
+| `scene/sensor_logger.py` | **NEW** | SensorLogger → 27-column CSV |
+
+All 6 Phase 7 tasks confirmed passing. See Phase 7 section below for details.
+
+---
+
 ## Session 2026-05-03 — Phase 6: EM Weld Controller + Constraint Lifecycle
 
 **Commit:** `283acab`
@@ -141,20 +222,34 @@ CARRY = {"a1": 45, "a2": -60, "a3": 50, "a4": 0, "a5": 30, "a6": 0}
 
 ---
 
-### Phase 7 — next (Sensor Suite)
+### Phase 7 — Sensor Suite ✅ COMPLETE
 
-All sensor XML goes in `scene/world.xml`. Test in `scene/test_sensors.py`.
+All sensor XML in `scene/world.xml`. Test: `scene/test_sensors.py`. Logger: `scene/sensor_logger.py`.
 
-| Task | Sensor type | Names | Sensordata size |
-|------|-------------|-------|-----------------|
-| 7.1 | `jointpos` × 6 | `sensor_pos_A1`–`A6` | 6 floats |
-| 7.2 | `jointvel` × 6 | `sensor_vel_A1`–`A6` | 6 floats |
-| 7.3 | `actuatorfrc` × 6 | `sensor_torque_A1`–`A6` | 6 floats |
-| 7.4 | `force` + `torque` at em_contact_site | `sensor_ee_force`, `sensor_ee_torque` | 3 + 3 floats |
-| 7.5 | `rangefinder` at em_contact_site | `sensor_proximity` | 1 float |
-| 7.6 | SensorLogger class | `scene/sensor_logger.py` | → CSV (27 cols) |
+| Task | Sensor type | Names | Sensordata size | Status |
+|------|-------------|-------|-----------------|--------|
+| 7.1 | `jointpos` × 6 | `sensor_pos_A1`–`A6` | 6 floats | ✅ |
+| 7.2 | `jointvel` × 6 | `sensor_vel_A1`–`A6` | 6 floats | ✅ |
+| 7.3 | `actuatorfrc` × 6 | `sensor_torque_A1`–`A6` | 6 floats | ✅ |
+| 7.4 | `force` + `torque` at em_contact_site | `sensor_ee_force`, `sensor_ee_torque` | 3 + 3 floats | ✅ |
+| 7.5 | `rangefinder` at em_contact_site | `sensor_proximity` | 1 float | ✅ |
+| 7.6 | SensorLogger class | `scene/sensor_logger.py` | → CSV (27 cols) | ✅ |
 
-Key verification: force Z ≈ **4.9 N** when box attached (0.5 kg × 9.81 m/s²).
+Key verification results (`python -m scene.test_sensors`):
+- 7.1 Joint positions non-zero (≥3/6): 3/6  PASS ✓
+- 7.2 Joint velocities settled (max < 0.05 rad/s): 0.0024  PASS ✓
+- 7.3 Max actuator torque > 1.0 N·m: 97.06  PASS ✓
+- 7.4 EE force ≈ 4.905 N  (got 6.228 N, tol ±1.5)  PASS ✓
+- 7.5 Proximity is finite float: -1.0  PASS ✓
+- 7.6 SensorLogger: 100 steps → 101-row CSV, 27 columns  PASS ✓
+
+`nsensordata = 27` (26 named sensors + `sensor_em_touch` bonus touch sensor on EM pad face).
+
+### Design notes — sensor_logger.py
+
+- `_SENSOR_NAMES` lists 22 sensors → 26 sensordata scalars (3-vector sensors expand to 3 cols)
+- `sensor_em_touch` is in world.xml but not tracked by SensorLogger (it was added as task 7.6 bonus; the logger's `assert total == 26` verifies its own 22 sensors only)
+- CSV col 0: simulation time; cols 1–26: sensor values in order
 
 ---
 
