@@ -976,5 +976,70 @@ After completing all tasks, verify:
 
 ---
 
+## Appendix — Uploading your work to GitHub
+
+The project is hosted at: **https://github.com/cohenshahar/VLA_Tutorial**
+
+### One-time setup (first time only)
+
+```bash
+# 1. Make sure git is installed
+git --version
+
+# 2. Set your identity (only needed once per machine)
+git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"
+
+# 3. Authenticate with GitHub
+#    Option A — GitHub CLI (recommended, installs once)
+sudo apt install gh
+gh auth login        # follow the prompts; choose HTTPS + browser
+
+#    Option B — Personal Access Token (classic)
+#    Go to GitHub → Settings → Developer settings → Personal access tokens → Generate new token
+#    Scope: repo (full control). Copy the token.
+#    When git asks for a password, paste the token.
+```
+
+### Uploading after each session
+
+Run these commands from inside the `VLATraining/` folder:
+
+```bash
+cd /home/shahar/Desktop/phase4/VLATraining
+
+# 1. Stage everything that changed
+git add -A
+
+# 2. Commit with a short description of what you did
+git commit -m "Phase X: brief description of changes"
+
+# 3. Push to GitHub
+git push origin main
+```
+
+### Checking what will be committed
+
+```bash
+git status          # shows modified / new / deleted files
+git diff --stat     # shows a summary of line changes per file
+git log --oneline -5   # shows the last 5 commits
+```
+
+### If the push is rejected (someone else pushed first)
+
+```bash
+git pull --rebase origin main   # bring in their changes, replay yours on top
+git push origin main
+```
+
+### What NOT to upload (already in .gitignore)
+
+- `phase4_env/` — the Python virtual environment (recreate with `pip install -r requirements.txt`)
+- `outputs/*.mp4` and `outputs/*.png` — large render files (add them manually if you want)
+- `__pycache__/` — Python bytecode cache
+
+---
+
 *VLA Research | Shahar Cohen | BGU Mechatronics | 2026-04-28*
 *Next after completion: connect OpenVLA output to Task Tree Manager and replace scripted policy with VLA-generated actions.*
