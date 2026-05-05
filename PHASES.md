@@ -1,0 +1,54 @@
+# VLA Simulation — Phase Tracker
+
+**Project:** VLA Research Simulation | KUKA KR6 + MuJoCo + ROS2  
+**Author:** Shahar Cohen | BGU Mechatronics MSc  
+**Last updated:** 2026-05-05
+
+---
+
+## Phase Status
+
+| Phase | Title | Status | Key output |
+|---|---|---|---|
+| 0 | Environment Setup | ✅ Done | venv, MuJoCo verified, ROS2 Humble active, vla_ws initialized |
+| 1 | KUKA KR6 R900 URDF | ✅ Done | `assets/urdf/kr6r900sixx.urdf`, `assets/mjcf/kr6r900sixx.xml` |
+| 2 | World Setup | ✅ Done | `scene/world.xml` — ground, table, arm mounted, physics params set |
+| 3 | Moving the Arm (Joint by Joint) | ✅ Done | Joint control, limit enforcement, Jacobian IK, trajectory video |
+| 4 | Electromagnetic End-Effector | ✅ Done | EM pad geometry + `em_contact_site` on A6 flange |
+| 5 | Scene Objects (Box + Target Zone) | ✅ Done | Free-body box, friction, target zone, touch sensor |
+| 6 | Electromagnetic Attachment System | ✅ Done | Weld constraint, proximity pre-condition, full EM cycle video |
+| 7 | Sensor Suite | ✅ Done | Joint pos/vel/torque, F/T, proximity, `SensorLogger` CSV |
+| 8 | Camera Setup | ✅ Done | `cam_overhead`, `cam_side`, `cam_wrist`, `CameraPublisher`, multicam video |
+| 9 | ROS2 Bridge | 🔜 Next | Topics: joint_states, ft_sensor, camera images, joint_commands |
+| 10 | Task Tree Manager | 🔜 Next | `TaskNode`, `TaskTreeManager`, 3-subtask pick-and-place sequence |
+| 11 | OpenVLA on Kaggle | 🔜 Next | 7-element action output from openvla/openvla-7b at ~1–3 Hz |
+
+---
+
+## Next actions (Phase 9 entry point)
+
+1. Run `colcon build` inside `vla_ws/` — confirm `mujoco_bridge` package is found
+2. Implement Task 9.2: hello-world node publishing `/bridge/status`
+3. Implement Task 9.3: publish `/joint_states` at 100 Hz from `data.qpos`
+4. Continue through Tasks 9.4–9.14
+
+See full task details in [docs/sim_instructions.md](docs/sim_instructions.md) — Phase 9 starts at Task 9.1.
+
+---
+
+## Key file locations
+
+| What | Path |
+|---|---|
+| Sim codebase | `VLATraining/sim/` |
+| World XML | `VLATraining/sim/scene/world.xml` |
+| Arm loader | `VLATraining/sim/arm/load_arm.py` |
+| EM controller | `VLATraining/sim/scene/em_controller.py` |
+| Sensor logger | `VLATraining/sim/scene/sensor_logger.py` |
+| Camera utils | `VLATraining/sim/scene/camera_utils.py` |
+| ROS2 bridge package | `VLATraining/vla_ws/src/mujoco_bridge/` |
+| Task tree (Phase 10) | `VLATraining/sim/task_tree/` |
+| Renders / videos | `VLATraining/sim/outputs/` |
+| Full instructions | `docs/sim_instructions.md` |
+| Work plan (milestones) | `docs/sim_work_plan.md` |
+| Architecture diagram | `docs/sim_block_diagram.mermaid` |
