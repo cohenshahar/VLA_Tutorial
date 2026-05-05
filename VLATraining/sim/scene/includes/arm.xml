@@ -72,21 +72,6 @@
                 <geom type="mesh" rgba="1 0.42 0 1" mesh="link_5"
                       contype="1" conaffinity="2"/>
 
-                <!--
-                  Wrist camera (Phase 8, Task 8.3)
-                  Mounted on link_5 (forearm), above the A5 joint, looking forward
-                  toward the end-effector and workspace below.
-                  pos: 0 cm along arm, 8 cm above the A5 axis (link_5 +Z)
-                  xyaxes: camera X = link_5 +Y (image right)
-                          camera Y = link_5 +Z (image up)
-                          camera Z = X×Y = (0,1,0)×(0,0,1) = (1,0,0) = link_5 +X
-                  Optical axis = link_5 +X → looks forward toward EE ✓
-                -->
-                <camera name="cam_wrist"
-                        pos="0 0 0.08"
-                        xyaxes="0 1 0  0 0 1"
-                        fovy="80"/>
-
                 <body name="link_6" pos="0.08 0 0">
                   <joint name="joint_a6" pos="0 0 0" axis="-1 0 0" range="-6.10865 6.10865"/>
                   <geom type="mesh" rgba="0.3 0.3 0.3 1" mesh="link_6"
@@ -153,8 +138,6 @@
                           size="0.004"
                           rgba="1 0.5 0 0"/>
 
-<<<<<<< HEAD
-=======
                     <!--
                       ══ Wrist Camera (Phase 8, Task 8.3) ═══════════════════════
                       Mounted on em_pad → moves with ALL 6 joints including A6.
@@ -204,7 +187,6 @@
                             xyaxes="0 1 0  0.342 0 0.940"
                             fovy="80"/>
 
->>>>>>> 7eac7b1 (feat: move cam_wrist to em_pad + camera housing geom + MUJOCO_GL fix)
                   </body><!-- em_pad -->
 
                 </body><!-- link_6 -->
@@ -227,7 +209,7 @@
   <actuator>
     <!--
       kp / kv will be overridden at runtime by tune_j1.py during tuning.
-      forcerange raised to ±500 Nm (proximal jets need torque for heavy links).
+      forcerange raised to ±500 Nm (proximal joints need torque for heavy links).
       kv placeholder value 10 — tune_j1.py sets the real value per joint.
     -->
     <position name="act_a1" joint="joint_a1" kp="500" kv="10" forcelimited="true" forcerange="-500 500"/>
