@@ -2,7 +2,19 @@
 scene/record_multicam.py  —  record one pick-carry-drop cycle from 3 cameras side-by-side
 Saves:  outputs/multicam_cycle.mp4   (cam_overhead | cam_side | cam_wrist)
 Usage:  PYTHONPATH=. python scene/record_multicam.py
+
+Rendering backend:
+  By default sets MUJOCO_GL=egl (GPU offscreen).
+  If you have no GPU, override before running:
+    MUJOCO_GL=osmesa python scene/record_multicam.py
 """
+
+import os
+# Set offscreen rendering backend before importing mujoco.
+# 'egl'    — GPU-backed (fast, requires GPU or EGL libs)
+# 'osmesa' — software (slow but works everywhere, needs libosmesa6)
+# Without this, MuJoCo may silently return black frames.
+os.environ.setdefault("MUJOCO_GL", "egl")
 
 import math
 import pathlib
@@ -94,6 +106,8 @@ def _solve_ik(model, qpas, dofas, ranges, site_id, seed_q, tgt_pos):
 def main():
     pathlib.Path(OUTPUT_MP4).parent.mkdir(parents=True, exist_ok=True)
 
+    print(f"Rendering backend: MUJOCO_GL={os.environ.get('MUJOCO_GL', 'not set')}")
+
     model    = mujoco.MjModel.from_xml_path(WORLD_XML)
     data     = mujoco.MjData(model)
     apply_gains(model, _GAINS)
@@ -118,15 +132,9 @@ def main():
     move_steps = max(1, int(MOVE_SECS / DT))
     hold_steps = max(1, int(HOLD_SECS / DT))
 
-    # ── label helpers ─────────────────────────────────────────────────────────
-    def _label_frame(img, text, cam_idx):
-        """Burn a simple text label into the top-left corner using numpy."""
-        # We'll rely on imageio/numpy only (no cv2) — use a very simple approach:
-        # Just return the image as-is; labels printed to terminal are sufficient.
-        return img
-
     def _capture():
         """Render all 3 cameras and return a single wide RGB frame."""
+        mujoco.mj_forward(model, data)   # ensure scene is up-to-date before render
         strips = []
         for cam in CAMS:
             renderer.update_scene(data, camera=cam)
@@ -254,15 +262,12 @@ def main():
 
     # ── write MP4 ─────────────────────────────────────────────────────────────
     print(f"Writing {OUTPUT_MP4} ...", end=" ", flush=True)
-    # Add camera label banners to each frame
-    label_h = 24
-    font_scale = 1
-    total_w = CAM_W * 3
 
     try:
         import cv2
         def add_labels(frame):
             out = frame.copy()
+            label_h = 24
             for i, name in enumerate(CAMS):
                 x0 = i * CAM_W
                 cv2.rectangle(out, (x0, 0), (x0 + CAM_W, label_h), (20, 20, 20), -1)

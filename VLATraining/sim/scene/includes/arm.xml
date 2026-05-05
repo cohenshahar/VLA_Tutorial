@@ -153,6 +153,58 @@
                           size="0.004"
                           rgba="1 0.5 0 0"/>
 
+<<<<<<< HEAD
+=======
+                    <!--
+                      ══ Wrist Camera (Phase 8, Task 8.3) ═══════════════════════
+                      Mounted on em_pad → moves with ALL 6 joints including A6.
+
+                      Position in em_pad frame:
+                        pos="-0.02 0 0.05"
+                        → 2 cm behind em_pad centre (away from EM contact face)
+                        → 5 cm above the EM cylinder axis (em_pad +Z direction)
+
+                      Orientation — forward with 20° downward tilt toward workspace:
+                        Camera Z (optical) = (cos20°, 0, -sin20°) = (0.940, 0, -0.342)
+                        Camera X (img right) = em_pad +Y = (0, 1, 0)
+                        Camera Y            = (0.342, 0, 0.940)
+                        xyaxes = "0 1 0  0.342 0 0.940"
+                        Verify: X×Y = (0,1,0)×(0.342,0,0.940) = (0.940,0,-0.342) = Z ✓
+
+                      Camera → EE tip geometry (em_pad frame):
+                        Camera at  (-0.02, 0,  0.05)
+                        EE tip at  ( 0.01, 0,  0.00)   ← em_contact_site
+                        Along optical axis: EE ~3 cm forward, 5 cm below.
+                        With 20° tilt and 80° FOV → EE lands near frame centre ✓
+
+                      Visual housing geoms (contype=0, no collision):
+                        cam_housing — dark box ~2.8×3.2×2.2 cm (camera body)
+                        cam_lens    — dark-blue sphere 1.4 cm dia (lens)
+                      ═══════════════════════════════════════════════════════════ -->
+
+                    <!-- Camera body housing (visual only) -->
+                    <geom name="cam_housing"
+                          type="box"
+                          pos="-0.02 0 0.05"
+                          size="0.014 0.016 0.011"
+                          rgba="0.08 0.08 0.08 1"
+                          contype="0" conaffinity="0"/>
+
+                    <!-- Lens (visual only) — dark-blue sphere at front face of housing -->
+                    <geom name="cam_lens"
+                          type="sphere"
+                          pos="-0.006 0 0.05"
+                          size="0.007"
+                          rgba="0.10 0.14 0.30 1"
+                          contype="0" conaffinity="0"/>
+
+                    <!-- Egocentric VLA camera — optical axis tilted 20° downward -->
+                    <camera name="cam_wrist"
+                            pos="-0.02 0 0.05"
+                            xyaxes="0 1 0  0.342 0 0.940"
+                            fovy="80"/>
+
+>>>>>>> 7eac7b1 (feat: move cam_wrist to em_pad + camera housing geom + MUJOCO_GL fix)
                   </body><!-- em_pad -->
 
                 </body><!-- link_6 -->
@@ -175,7 +227,7 @@
   <actuator>
     <!--
       kp / kv will be overridden at runtime by tune_j1.py during tuning.
-      forcerange raised to ±500 Nm (proximal joints need torque for heavy links).
+      forcerange raised to ±500 Nm (proximal jets need torque for heavy links).
       kv placeholder value 10 — tune_j1.py sets the real value per joint.
     -->
     <position name="act_a1" joint="joint_a1" kp="500" kv="10" forcelimited="true" forcerange="-500 500"/>
