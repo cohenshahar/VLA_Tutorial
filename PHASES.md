@@ -2,7 +2,7 @@
 
 **Project:** VLA Research Simulation | KUKA KR6 + MuJoCo + ROS2  
 **Author:** Shahar Cohen | BGU Mechatronics MSc  
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-06
 
 ---
 
@@ -19,20 +19,20 @@
 | 6 | Electromagnetic Attachment System | ✅ Done | Weld constraint, proximity pre-condition, full EM cycle video |
 | 7 | Sensor Suite | ✅ Done | Joint pos/vel/torque, F/T, proximity, `SensorLogger` CSV |
 | 8 | Camera Setup | ✅ Done | `cam_overhead`, `cam_side`, `cam_wrist`, `CameraPublisher`, multicam video |
-| 9 | ROS2 Bridge | 🔜 Next | Topics: joint_states, ft_sensor, camera images, joint_commands |
+| 9 | ROS2 Bridge | ✅ Done | 10 topics live: joint_states, ft_sensor, cameras, em_state, joint_commands sub |
 | 10 | Task Tree Manager | 🔜 Next | `TaskNode`, `TaskTreeManager`, 3-subtask pick-and-place sequence |
 | 11 | OpenVLA on Kaggle | 🔜 Next | 7-element action output from openvla/openvla-7b at ~1–3 Hz |
 
 ---
 
-## Next actions (Phase 9 entry point)
+## Next actions (Phase 10 entry point)
 
-1. Run `colcon build` inside `vla_ws/` — confirm `mujoco_bridge` package is found
-2. Implement Task 9.2: hello-world node publishing `/bridge/status`
-3. Implement Task 9.3: publish `/joint_states` at 100 Hz from `data.qpos`
-4. Continue through Tasks 9.4–9.14
+1. Create `task_tree/task_node.py` — `TaskNode` dataclass (name, language_instruction, primitives, postcondition_fn, status)
+2. Create `task_tree/pick_and_place_tree.py` — root node + 3 child subtasks with postcondition lambdas
+3. Create `task_tree/task_tree_manager.py` — `TaskTreeManager` with `step()`, `get_current_instruction()`, `get_status_dict()`
+4. Connect manager to `SensorLogger` via `step_from_logger(logger)`
 
-See full task details in [docs/sim_instructions.md](docs/sim_instructions.md) — Phase 9 starts at Task 9.1.
+See full task details in [docs/sim_instructions.md](docs/sim_instructions.md) — Phase 10 starts at Task 10.1.
 
 ---
 

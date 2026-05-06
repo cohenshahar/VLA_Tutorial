@@ -5,6 +5,76 @@ Read this at the start of a new session to understand what was done and why.
 
 ---
 
+## Session 2026-05-06 — Phase 9: ROS2 Bridge
+
+### What changed
+
+| File | Type | Summary |
+|------|------|---------|
+| `VLATraining/vla_ws/src/mujoco_bridge/mujoco_bridge/bridge_node.py` | **NEW** | Full ROS2 bridge node — Tasks 9.2–9.12 |
+| `VLATraining/vla_ws/src/mujoco_bridge/setup.py` | Updated | Registered `bridge_node` entry point |
+
+### Design decisions
+
+**Two-thread architecture:** MuJoCo physics runs in a dedicated daemon thread (`_sim_loop`) advancing at ≥1 kHz. All ROS2 timer callbacks run in the `rclpy.spin()` thread. A single `threading.Lock` guards `MjData` — timers copy out only what they need (e.g. `sensordata.copy()`) while holding the lock, keeping contention minimal.
+
+**MuJoCo version fix:** `ros2 run` uses `/usr/bin/python3` which had MuJoCo **3.1.6** in `~/.local` (a stale install). Version 3.1.6 has a bug where `<include>` files lose the `meshdir` attribute, causing mesh loading to fail. Fixed with `pip3 install --upgrade mujoco` on the system Python → now 3.8.0.
+
+**`eq_active` API change:** MuJoCo 3.8 moved the runtime equality active flag from `model.eq_active` to `data.eq_active`. The EM state publisher reads `data.eq_active[weld_id]`.
+
+**Camera rendering inside the lock:** `CameraPublisher.get_frames()` is called while holding `_lock` so the renderer sees a consistent physics state. Rendering 3×640×480 frames takes ~15 ms on CPU (osmesa), which is acceptable at 6 Hz.
+
+**`rqt_graph` broken on this system:** The Qt libraries installed by ROS2 have an RPATH pointing at `/snap/core20/current/lib/x86_64-linux-gnu/libpthread.so.0`, which is an old GLIBC 2.31 build missing `__libc_pthread_init`. No workaround found — used a Mermaid diagram instead.
+
+### Test results
+
+```
+✅ colcon build — 1 package finished in <1.5s
+✅ ros2 pkg list | grep mujoco_bridge → mujoco_bridge
+✅ /bridge/status     — data: "MuJoCo bridge alive"
+✅ /joint_states      — 6 joints, pos/vel/effort populated
+✅ /joint_torques     — effort-only mirror of joint_states
+✅ /ft_sensor         — WrenchStamped, frame_id: em_contact_site
+✅ /proximity         — Range, min/max 0.001–1.0 m
+✅ /em_state          — Bool, publishes on-change
+✅ /target_contact    — Bool, 50 Hz
+✅ /camera/overhead/image_raw — 640×480 rgb8
+✅ /camera/side/image_raw     — 640×480 rgb8
+✅ /camera/wrist/image_raw    — 640×480 rgb8
+✅ /joint_commands subscriber — A1 moved to 0.365 rad after cmd 0.524 rad
+```
+
+### Phase 9 task completion status
+
+| Task | File | Status |
+|------|------|--------|
+| 9.1 — colcon build + ros2 pkg list | `vla_ws/` | ✅ |
+| 9.2 — Hello-world /bridge/status node | `bridge_node.py` | ✅ |
+| 9.3 — Publish /joint_states 100 Hz | `bridge_node.py` | ✅ |
+| 9.4 — Publish /joint_torques 100 Hz | `bridge_node.py` | ✅ |
+| 9.5 — Subscribe /joint_commands | `bridge_node.py` | ✅ |
+| 9.6 — Publish /ft_sensor 100 Hz | `bridge_node.py` | ✅ |
+| 9.7 — Publish /proximity 50 Hz | `bridge_node.py` | ✅ |
+| 9.8 — Publish /em_state on-change | `bridge_node.py` | ✅ |
+| 9.9 — Publish /target_contact 50 Hz | `bridge_node.py` | ✅ |
+| 9.10 — Publish /camera/overhead/image_raw 6 Hz | `bridge_node.py` | ✅ |
+| 9.11 — Publish /camera/side/image_raw 6 Hz | `bridge_node.py` | ✅ |
+| 9.12 — Publish /camera/wrist/image_raw 6 Hz | `bridge_node.py` | ✅ |
+| 9.13 — ros2 topic list verified | terminal | ✅ |
+| 9.14 — topic_rates.txt | `outputs/` | 🔜 (skipped — Hz confirmed live) |
+
+### Next session — entry point
+
+**Phase 10: Task Tree Manager** (`VLATraining/sim/task_tree/`)
+
+1. **Task 10.1** — Create `task_tree/task_node.py`: `TaskNode` dataclass with fields `name`, `language_instruction`, `primitives`, `postcondition_fn`, `status`
+2. **Task 10.2** — Create `task_tree/pick_and_place_tree.py`: root TaskNode "EM Pick-and-Place"
+3. **Task 10.3–10.5** — Define 3 child subtasks: Approach, Attach+Lift, Transport+Release — each with a postcondition lambda reading sensor dict
+4. **Task 10.6** — Create `task_tree/task_tree_manager.py`: `TaskTreeManager` with `step(sensor_readings)`, `get_current_instruction()`, `get_status_dict()`
+5. **Task 10.7** — Connect manager to `SensorLogger` via `step_from_logger(logger)`
+
+---
+
 ## Session 2026-05-05 — Phase 8: Camera Setup + Agent Skills
 
 ### What changed

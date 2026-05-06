@@ -19,7 +19,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            # Task 9.2: 'bridge_node = mujoco_bridge.bridge_node:main',
+            'bridge_node = mujoco_bridge.bridge_node:main',
         ],
     },
 )
