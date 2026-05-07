@@ -24,6 +24,7 @@ Tasks 9.2 – 9.12
 import os
 import sys
 import threading
+from pathlib import Path
 
 import mujoco
 import numpy as np
@@ -36,14 +37,30 @@ from geometry_msgs.msg import WrenchStamped
 from trajectory_msgs.msg import JointTrajectory
 from cv_bridge import CvBridge
 
-# Add sim root to path so we can import camera_utils
-_SIM_ROOT_IMPORT = os.path.expanduser('~/Desktop/VLA_Tutorial/VLATraining/sim')
-if _SIM_ROOT_IMPORT not in sys.path:
-    sys.path.insert(0, _SIM_ROOT_IMPORT)
+# ── paths ─────────────────────────────────────────────────────────────────────────
+def _resolve_sim_root() -> str:
+    """Resolve VLATraining/sim. Priority: VLA_SIM_ROOT env var, then dev-tree fallback."""
+    env = os.environ.get('VLA_SIM_ROOT')
+    if env:
+        return os.path.abspath(env)
+    # Dev-tree fallback: this file lives at
+    #   .../VLATraining/vla_ws/src/mujoco_bridge/mujoco_bridge/bridge_node.py
+    # so VLATraining/sim is parents[4] / 'sim'.
+    here = Path(__file__).resolve()
+    candidate = here.parents[4] / 'sim'
+    if candidate.is_dir():
+        return str(candidate)
+    raise RuntimeError(
+        f"Cannot locate VLATraining/sim. "
+        f"Set VLA_SIM_ROOT env var, or run from the VLA_Tutorial dev tree. "
+        f"Tried: {candidate}"
+    )
 
-# ── paths ──────────────────────────────────────────────────────────────────
-_SIM_ROOT  = os.path.expanduser('~/Desktop/VLA_Tutorial/VLATraining/sim')
+_SIM_ROOT  = _resolve_sim_root()
 _WORLD_XML = os.path.join(_SIM_ROOT, 'scene', 'world.xml')
+
+if _SIM_ROOT not in sys.path:
+    sys.path.insert(0, _SIM_ROOT)
 
 # Camera names (must match XML)
 _CAMERA_NAMES = ['cam_overhead', 'cam_side', 'cam_wrist']
@@ -83,6 +100,24 @@ def _ros_stamp(node: Node) -> Time:
 
 
 class BridgeNode(Node):
+    """
+    MuJoCo ↔ ROS2 bridge node — Phase 9.
+
+    Lock contract
+    -------------
+    Any read or write of self._model or self._data fields outside _sim_loop
+    must be done while holding self._lock.
+
+      * _sim_loop holds the lock for the duration of mj_step.
+      * Every ROS2 timer callback that reads sensordata, qpos, qvel,
+        eq_active, or renders a camera frame, holds the lock for the
+        duration of the read.
+      * Callbacks copy out (.copy()) any numpy view they need, then
+        release the lock before constructing/publishing the ROS message.
+
+    Violating this contract = silent data races during mj_step, and
+    intermittent garbage values in the published topics.
+    """
 
     def __init__(self):
         super().__init__('mujoco_bridge')
@@ -171,7 +206,11 @@ class BridgeNode(Node):
 
     # ── simulation loop (background thread) ───────────────────────────────
     def _sim_loop(self):
-        """Advance physics as fast as possible (≥1 kHz)."""
+        """Physics thread. Holds self._lock during mj_step. Logs RTF every 5 s."""
+        import time
+        target_hz = 1.0 / self._model.opt.timestep   # e.g. 1000.0 for 1 ms timestep
+        step_count = 0
+        last_log = time.monotonic()
         while self._running:
             with self._lock:
                 # Apply pending command if any
@@ -179,6 +218,17 @@ class BridgeNode(Node):
                     np.copyto(self._data.ctrl, self._cmd_ctrl)
                     self._cmd_ctrl = None
                 mujoco.mj_step(self._model, self._data)
+            step_count += 1
+            now = time.monotonic()
+            if now - last_log >= 5.0:
+                real_hz = step_count / (now - last_log)
+                rtf = real_hz / target_hz
+                self.get_logger().info(
+                    f'sim_loop: real {real_hz:.0f} Hz / target {target_hz:.0f} Hz '
+                    f'= RTF {rtf:.3f}'
+                )
+                step_count = 0
+                last_log = now
 
     # ── ROS callbacks ─────────────────────────────────────────────────────
     def _publish_status(self):
