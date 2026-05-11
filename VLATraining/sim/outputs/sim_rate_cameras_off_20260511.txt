@@ -1,0 +1,13 @@
+Scenario: cameras_off
+Bridge commit: 8134e42
+Workload: bridge only (cameras disabled, high-freq topics active)
+Capture window: ~70 s
+Samples: 14
+RTF samples: 8.338, 9.048, 8.908, 8.741, 8.799, 9.125, 8.929, 8.926, 8.889, 8.780, 8.814, 8.576, 8.823, 9.102
+RTF mean: 8.843
+RTF min: 8.338
+RTF max: 9.125
+RTF stddev: 0.206
+Note: RTF >> 1.0 without camera rendering. Camera cost ≈ 8.843 - 0.553 = 8.29 RTF units
+      Camera rendering (3 × 6 Hz, CPU osmesa) dominates sim performance.
+      High-freq topics (100 Hz, 50 Hz) maintain full spec without camera load.

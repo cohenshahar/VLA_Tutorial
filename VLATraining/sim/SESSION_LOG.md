@@ -5,6 +5,60 @@ Read this at the start of a new session to understand what was done and why.
 
 ---
 
+## Session 2026-05-11 — Phase 9 polish: characterized
+
+### Code changes
+
+- `bridge_node.py`: env-var-based sim root resolution (`VLA_SIM_ROOT` env var + dev-tree fallback, no more hardcoded `~/Desktop/...`)
+- `bridge_node.py`: `Lock contract` docstring documenting thread-safety rules for `_sim_loop` and timer callbacks
+- `bridge_node.py`: `_sim_loop` now logs real Hz and RTF every 5 s
+
+### Bounds measured
+
+| Scenario | sim_loop Hz (mean) | RTF (mean) | RTF (min) | Stddev | Pass? |
+|---|---|---|---|---|---|
+| Cameras on (3 × 6 Hz)  | 553 | 0.553 | 0.509 | 0.028 | ⚠️ (0.70–0.95 range — documented, ship as-is) |
+| Cameras off            | 8843 | 8.843 | 8.338 | 0.206 | ✅ |
+| Camera cost (delta RTF) | −8290 | −8.29 | — | — | — |
+
+Camera rendering (3 × 6 Hz, CPU osmesa) dominates performance. Without cameras RTF >> 8×. Architectural fix (copy-then-render pattern) deferred to Phase 10.
+
+### Topic rates (vs ±5% spec)
+
+| Topic | Hz | Spec | Diff% | Flag |
+|---|---|---|---|---|
+| /bridge/status | 1.0 | 1 | -0.1% | ✅ |
+| /joint_states | 82.6 | 100 | -17.4% | ❌ (GIL-bound with cameras) |
+| /joint_torques | 84.4 | 100 | -15.6% | ❌ |
+| /ft_sensor | 83.9 | 100 | -16.1% | ❌ |
+| /proximity | 43.6 | 50 | -12.9% | ❌ |
+| /em_state | 0.0 | on-chg | — | — |
+| /target_contact | 44.5 | 50 | -11.1% | ❌ |
+| /camera/overhead | 6.0 | 6 | -0.1% | ✅ |
+| /camera/side | 6.0 | 6 | -0.1% | ✅ |
+| /camera/wrist | 6.0 | 6 | -0.1% | ✅ |
+
+High-freq topics throttled by Python GIL contention when cameras render. Fix deferred to Phase 10 (multi-process bridge).
+
+### Phase 9 status: ✅ characterized
+
+Outputs:
+- `outputs/topic_rates_20260507.txt`
+- `outputs/sim_rate_cameras_on_20260507.txt`
+- `outputs/sim_rate_cameras_off_20260511.txt`
+
+### Next session — entry point
+
+**Phase 10: Task Tree Manager** (`VLATraining/sim/task_tree/`)
+
+1. **Task 10.1** — Create `task_tree/task_node.py`: `TaskNode` dataclass
+2. **Task 10.2** — Create `task_tree/pick_and_place_tree.py`: root TaskNode
+3. **Tasks 10.3–10.5** — Define 3 child subtasks with postcondition lambdas
+4. **Task 10.6** — Create `task_tree/task_tree_manager.py`
+5. **Task 10.7** — Connect manager to `SensorLogger`
+
+---
+
 ## Session 2026-05-06 — Phase 9: ROS2 Bridge
 
 ### What changed

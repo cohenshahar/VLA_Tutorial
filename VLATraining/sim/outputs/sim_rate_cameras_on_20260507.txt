@@ -1,0 +1,13 @@
+Scenario: cameras_on
+Bridge commit: 6d3abf1
+Workload: bridge only (3 cameras × 6 Hz, rate-limited sim loop)
+Capture window: ~90 s
+Samples: 18
+RTF samples: 0.509, 0.612, 0.580, 0.613, 0.580, 0.562, 0.536, 0.551, 0.542, 0.519, 0.532, 0.541, 0.532, 0.556, 0.552, 0.546, 0.562, 0.532
+RTF mean: 0.553
+RTF min: 0.509
+RTF max: 0.613
+RTF stddev: 0.028
+Note: RTF < 1.0 is hardware-bound (CPU GIL contention). Cameras hit spec (6 Hz).
+      High-freq topics (100 Hz, 50 Hz) are throttled to ~83 Hz / ~44 Hz.
+      Fix deferred to Phase 10 (multi-process bridge).

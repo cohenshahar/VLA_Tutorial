@@ -2,7 +2,7 @@
 
 **Project:** VLA Research Simulation | KUKA KR6 + MuJoCo + ROS2  
 **Author:** Shahar Cohen | BGU Mechatronics MSc  
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-11
 
 ---
 
@@ -19,7 +19,7 @@
 | 6 | Electromagnetic Attachment System | ✅ Done | Weld constraint, proximity pre-condition, full EM cycle video |
 | 7 | Sensor Suite | ✅ Done | Joint pos/vel/torque, F/T, proximity, `SensorLogger` CSV |
 | 8 | Camera Setup | ✅ Done | `cam_overhead`, `cam_side`, `cam_wrist`, `CameraPublisher`, multicam video |
-| 9 | ROS2 Bridge | ✅ Done | 10 topics live: joint_states, ft_sensor, cameras, em_state, joint_commands sub |
+| 9 | ROS2 Bridge | ✅ Characterized | 10 topics live + measured: RTF 0.553 with cameras, all camera/status topics within ±1% of spec; high-freq topics ~-15% (GIL-bound, deferred to Phase 10) |
 | 10 | Task Tree Manager | 🔜 Next | `TaskNode`, `TaskTreeManager`, 3-subtask pick-and-place sequence |
 | 11 | OpenVLA on Kaggle | 🔜 Next | 7-element action output from openvla/openvla-7b at ~1–3 Hz |
 
