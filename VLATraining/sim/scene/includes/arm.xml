@@ -104,7 +104,11 @@
                     -->
                     <site name="em_contact_site"
                           pos="0.01 0 0"
+                          euler="0 -90 0"
                           size="0.005" rgba="1 0 0 0.5"/>
+                    <!-- euler="0 -90 0": rotates site Z to align with em_pad +X (the EM face axis).
+                         In the R_DOWN reach pose, em_pad +X ≈ world -Z (downward),
+                         so the rangefinder fires straight down toward the box. -->
                     <site name="em_dot_b"
                           pos="0.01 0.03 0"
                           size="0.005" rgba="0 1 0 0.5"/>
