@@ -1,0 +1,18 @@
+Scenario: cameras_on (after camera-render decoupling fix)
+Bridge commit: 0875ecb
+Fix applied: _publish_cameras now copies state under lock (~0.1 ms), releases lock,
+             then calls mj_forward + render outside the lock (~45 ms lock-free).
+             _sim_loop rate-limited to RTF ≈ 1.0 with GIL yield after each step.
+Workload: bridge only (3 cameras × 6 Hz, rate-limited sim loop)
+Capture window: ~85 s
+Samples: 17
+RTF samples: 0.791, 0.804, 0.732, 0.679, 0.711, 0.711, 0.692, 0.695, 0.703, 0.785, 0.788, 0.797, 0.809, 0.816, 0.801, 0.772, 0.763
+RTF mean: 0.756
+RTF min: 0.679
+RTF max: 0.816
+RTF stddev: 0.048
+vs before fix: RTF was 0.553 (mean) — improvement: +0.203 RTF units (+37%)
+Pass: ✅ above 0.70 floor (was ❌ below floor at 0.553)
+Note: Physics is no longer blocked during camera rendering.
+      Remaining RTF < 1.0 is due to Python GIL contention between sim thread
+      and ROS2 executor thread. Full fix (separate render process) deferred to Phase 10.

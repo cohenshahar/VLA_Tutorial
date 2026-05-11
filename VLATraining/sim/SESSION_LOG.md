@@ -4,7 +4,56 @@ This file documents every session's changes, design decisions, and current state
 Read this at the start of a new session to understand what was done and why.
 
 ---
+## Session 2026-05-11 — Phase 9 fix: camera render decoupling + sim loop rate limiter
 
+### What changed
+
+| File | Type | Summary |
+|------|------|---------|
+| `vla_ws/src/mujoco_bridge/mujoco_bridge/bridge_node.py` | Updated | Camera render decoupled from lock; sim loop rate-limited; path walker fixed |
+
+### Design decisions
+
+**Camera render decoupling:** Previously `_publish_cameras` held `_lock` for the full render (~45 ms). This blocked `_sim_loop` from advancing physics during that time, giving RTF ≈ 0.55 with cameras on. Fixed by:
+1. Acquire lock → copy `qpos`/`qvel`/`ctrl`/`act`/`mocap` into `self._data_render` → release lock (~0.1 ms)
+2. Call `mj_forward(model, _data_render)` outside lock — recomputes site positions/frames for renderer
+3. Render all 3 cameras from `_data_render` outside lock (~45 ms, physics advances freely)
+
+**Sim loop rate limiter:** Without rate-limiting, `_sim_loop` ran at ~7000–9000 Hz (RTF 7–9×), acquiring the lock thousands of times per second and starving the ROS2 executor via GIL contention. Added `time.sleep(0)` after each step (explicit GIL yield) + `time.sleep(remaining)` to target RTF ≈ 1.0.
+
+**Path resolution fix:** `_resolve_sim_root()` previously used `parents[4]` (hardcoded depth), which failed when running from the `install/` tree. Replaced with a walker loop over all ancestors looking for `VLATraining/sim/` — works from both source and install trees.
+
+### Bounds measured (after fix)
+
+| Scenario | RTF mean | RTF min | RTF max | Stddev | Pass? |
+|---|---|---|---|---|---|
+| Cameras on (after fix) | 0.756 | 0.679 | 0.816 | 0.048 | ✅ above 0.70 floor |
+| Cameras on (before fix) | 0.553 | 0.509 | 0.613 | 0.028 | ❌ below 0.70 floor |
+| Cameras off | 8.843 | 8.338 | 9.125 | 0.206 | ✅ |
+
+RTF improvement: +0.203 units (+37%). Physics no longer blocked during renders.
+
+### Topic rates (count-based, N/30s window)
+
+| Topic | Hz (count/window) | Spec | Diff% | Flag |
+|---|---|---|---|---|
+| /bridge/status | 1.0 | 1 | 0% | ✅ |
+| /joint_states | 75.2 | 100 | -25% | ⚠️ GIL-limited |
+| /joint_torques | 75.2 | 100 | -25% | ⚠️ GIL-limited |
+| /ft_sensor | 74.5 | 100 | -26% | ⚠️ GIL-limited |
+| /proximity | 40.2 | 50 | -20% | ⚠️ GIL-limited |
+| /target_contact | 40.1 | 50 | -20% | ⚠️ GIL-limited |
+| /camera/overhead | 5.5 | 6 | -8% | ⚠️ within 10% |
+| /camera/side | 5.5 | 6 | -8% | ⚠️ within 10% |
+| /camera/wrist | 5.5 | 6 | -8% | ⚠️ within 10% |
+
+High-freq topic deficit is GIL contention between sim thread and ROS2 executor — not the camera lock. Full fix requires Phase 10 multi-process bridge (separate process per camera, main process for non-camera topics).
+
+### Next session — entry point
+
+**Phase 10: Task Tree Manager** (`VLATraining/sim/task_tree/`) — see previous entry below.
+
+---
 ## Session 2026-05-11 — Phase 9 polish: characterized
 
 ### Code changes

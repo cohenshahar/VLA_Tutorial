@@ -43,17 +43,17 @@ def _resolve_sim_root() -> str:
     env = os.environ.get('VLA_SIM_ROOT')
     if env:
         return os.path.abspath(env)
-    # Dev-tree fallback: this file lives at
-    #   .../VLATraining/vla_ws/src/mujoco_bridge/mujoco_bridge/bridge_node.py
-    # so VLATraining/sim is parents[4] / 'sim'.
+    # Dev-tree fallback: walk up from __file__ looking for VLATraining/sim.
+    # Works from both the source tree and the install tree.
     here = Path(__file__).resolve()
-    candidate = here.parents[4] / 'sim'
-    if candidate.is_dir():
-        return str(candidate)
+    for parent in here.parents:
+        candidate = parent / 'VLATraining' / 'sim'
+        if candidate.is_dir():
+            return str(candidate)
     raise RuntimeError(
         f"Cannot locate VLATraining/sim. "
         f"Set VLA_SIM_ROOT env var, or run from the VLA_Tutorial dev tree. "
-        f"Tried: {candidate}"
+        f"Searched ancestors of: {here}"
     )
 
 _SIM_ROOT  = _resolve_sim_root()
@@ -109,9 +109,11 @@ class BridgeNode(Node):
     must be done while holding self._lock.
 
       * _sim_loop holds the lock for the duration of mj_step.
-      * Every ROS2 timer callback that reads sensordata, qpos, qvel,
-        eq_active, or renders a camera frame, holds the lock for the
-        duration of the read.
+      * Every ROS2 timer callback that reads sensordata, qpos, qvel, or
+        eq_active holds the lock only for the duration of the array copy.
+      * _publish_cameras copies qpos/qvel/ctrl/act under lock (~0.1 ms),
+        then releases the lock before calling mj_forward and rendering.
+        Rendering (~45 ms) runs lock-free so _sim_loop is not starved.
       * Callbacks copy out (.copy()) any numpy view they need, then
         release the lock before constructing/publishing the ROS message.
 
@@ -170,6 +172,11 @@ class BridgeNode(Node):
         # Lock guards shared MjData between sim thread and ROS timers
         self._lock = threading.Lock()
 
+        # Dedicated MjData for camera rendering — never touched by _sim_loop.
+        # _publish_cameras copies state under lock (~0.1 ms), then renders
+        # outside the lock so physics advances freely during the ~45 ms render.
+        self._data_render = mujoco.MjData(self._model)
+
         # Pending joint command (set by subscriber, consumed by sim thread)
         self._cmd_ctrl: np.ndarray | None = None
 
@@ -206,18 +213,32 @@ class BridgeNode(Node):
 
     # ── simulation loop (background thread) ───────────────────────────────
     def _sim_loop(self):
-        """Physics thread. Holds self._lock during mj_step. Logs RTF every 5 s."""
+        """Physics thread. Holds self._lock during mj_step. Logs RTF every 5 s.
+
+        Rate-limited to 1× real time so the ROS2 executor is not GIL-starved.
+        After each step we yield the GIL (time.sleep(0)) then sleep the
+        remainder of the timestep budget, keeping RTF ≈ 1.0.
+        """
         import time
         target_hz = 1.0 / self._model.opt.timestep   # e.g. 1000.0 for 1 ms timestep
+        target_dt = self._model.opt.timestep          # wall-clock budget per step
         step_count = 0
         last_log = time.monotonic()
         while self._running:
+            t0 = time.monotonic()
             with self._lock:
                 # Apply pending command if any
                 if self._cmd_ctrl is not None:
                     np.copyto(self._data.ctrl, self._cmd_ctrl)
                     self._cmd_ctrl = None
                 mujoco.mj_step(self._model, self._data)
+            # Yield GIL — lets the ROS2 executor fire pending timer callbacks
+            time.sleep(0)
+            # Sleep remainder of timestep budget to target RTF ≈ 1.0
+            elapsed = time.monotonic() - t0
+            remaining = target_dt - elapsed
+            if remaining > 1e-4:
+                time.sleep(remaining)
             step_count += 1
             now = time.monotonic()
             if now - last_log >= 5.0:
@@ -315,12 +336,33 @@ class BridgeNode(Node):
         msg.data = raw > 0.0
         self._touch_pub.publish(msg)
 
-    def _publish_cameras(self):
-        """Tasks 9.10–9.12 — render all 3 cameras and publish at 6 Hz."""
-        stamp = _ros_stamp(self)
-        with self._lock:
-            frames = self._cam_publisher.get_frames(self._model, self._data)
+    def _snapshot_for_render(self) -> None:
+        """Copy live physics state into _data_render. Must be called under self._lock."""
+        d, dr = self._data, self._data_render
+        dr.qpos[:] = d.qpos
+        dr.qvel[:] = d.qvel
+        dr.act[:]  = d.act
+        dr.ctrl[:] = d.ctrl
+        if d.mocap_pos.size:
+            dr.mocap_pos[:]  = d.mocap_pos
+            dr.mocap_quat[:] = d.mocap_quat
+        dr.time = d.time
 
+    def _publish_cameras(self):
+        """Tasks 9.10–9.12 — render all 3 cameras and publish at 6 Hz.
+
+        Lock is held only for the state copy (~0.1 ms).  The expensive
+        mj_forward + render (~45 ms) runs outside the lock so _sim_loop
+        can advance physics freely during the render.
+        """
+        stamp = _ros_stamp(self)
+        # 1. Snapshot under lock — very fast
+        with self._lock:
+            self._snapshot_for_render()
+        # 2. Recompute derived quantities on the snapshot (no lock needed)
+        mujoco.mj_forward(self._model, self._data_render)
+        # 3. Render from snapshot (no lock, ~45 ms)
+        frames = self._cam_publisher.get_frames(self._model, self._data_render)
         for cam_name, rgb in frames.items():
             img_msg = self._cv_bridge.cv2_to_imgmsg(rgb, encoding='rgb8')
             img_msg.header.stamp = stamp
