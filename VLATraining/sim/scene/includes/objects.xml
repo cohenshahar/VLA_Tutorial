@@ -26,6 +26,10 @@
               rgba="0.72 0.72 0.78 1"
               specular="0.6"
               shininess="0.4"/>
+    <material name="metal_sphere_mat"
+              rgba="0.60 0.65 0.80 1"
+              specular="0.7"
+              shininess="0.5"/>
     <material name="target_zone_mat"
               rgba="1.0 0.0 0.0 1"
               specular="0.05"
@@ -65,6 +69,33 @@
             size="0.005"
             rgba="0 1 0 0.5"/>
     </body><!-- metal_box -->
+
+    <!--
+      ── Metal sphere (Phase 10, Task 10.6) ──────────────────────────────
+      Second graspable object.  radius=0.04 m, mass=0.3 kg.
+      Position [0.55, 0.15, 0.88] puts the sphere next to the metal box.
+      sphere_top_site is at the top of the sphere (local +Z = +0.04 m).
+      Grasping is handled by the shape-agnostic proximity check in
+      em_controller.py — no site-specific distance check required.
+    -->
+    <body name="metal_sphere" pos="0.55 0.15 0.88">
+      <freejoint name="sphere_freejoint"/>
+
+      <geom name="sphere_geom"
+            type="sphere"
+            size="0.04"
+            mass="0.3"
+            material="metal_sphere_mat"
+            friction="0.8 0.005 0.0001"
+            condim="6"
+            contype="4" conaffinity="6"/>
+
+      <!-- Reference site at top of sphere (body local +Z). -->
+      <site name="sphere_top_site"
+            pos="0 0 0.04"
+            size="0.005"
+            rgba="0 0.8 1 0.5"/>
+    </body><!-- metal_sphere -->
 
     <!--
       ── Target zone (Phase 5, Task 5.5) ─────────────────────────────────
