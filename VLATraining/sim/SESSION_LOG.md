@@ -4,6 +4,54 @@ This file documents every session's changes, design decisions, and current state
 Read this at the start of a new session to understand what was done and why.
 
 ---
+## Session 2026-05-11 — Phase 10, Tasks 10.1–10.2 (partial)
+
+### What changed
+
+| File | Type | Summary |
+|------|------|---------|
+| `scene/includes/arm.xml` | Updated | `em_contact_site` euler fixed to `"0 -90 0"` — rangefinder Z now points downward |
+| `scene/demo_grasp_lift.py` | Updated | Box pre-positioned after IK lift; FT criterion uses force magnitude \|F\| |
+| `VLATraining/.gitignore` | Updated | Added `!sim/outputs/demo_*.mp4` exception to track Phase 10 demo videos |
+| `outputs/demo_reach_20260511.mp4` | New | Task 10.1 output — 362 frames |
+| `outputs/demo_grasp_lift_20260511.mp4` | New | Task 10.2 output — 495 frames |
+
+### Bug fixes this session
+
+**Proximity sensor always -1.0 (false positive):**
+MuJoCo rangefinder fires along site local +Z. In the R_DOWN reach pose, `em_contact_site` Z was pointing horizontally (world +X), not downward — so the sensor never hit the box and returned -1.0 sentinel. Previous attempt `euler="0 90 0"` rotated Z to `-old X` (away from box). Correct fix: `euler="0 -90 0"` rotates Z to `+old X` (= EM face direction = world -Z in reach pose). After fix: proximity reads 0.0224 m at step 0 ✅.
+
+**Box oscillates after IK lift (FT never holds > 4 N):**
+`_run_ik` teleports the arm to lift height but the box stays at hover height. When physics starts, the weld constraint generates a huge impulse (183 N spike) then the box bounces. Fix: after IK lift, pre-position the box to the weld-consistent Z before the first `mj_step`. Also switched FT criterion from `fz component` to `|F| magnitude` — the site Z is oblique at lift height so fz alone never exceeded 4 N. After fix: `|F| = 6.97 N` held for 100 consecutive steps at step 125 ✅.
+
+### Task results
+
+| Task | Result | Key metric |
+|------|--------|------------|
+| 10.1 demo_reach | ✅ | proximity = 0.0224 m < 0.025 m at step 0 |
+| 10.2 demo_grasp_lift | ✅ | \|F\| = 6.97 N for 100 consecutive steps (step 125) |
+| 10.3 demo_place_near | ❌ | Target zone at (0,0) — arm can't reach; blocked |
+
+### Red flag discovered (live viewer)
+
+**Arm approaches box from the side, not from above.**
+The IK is converging to a local minimum (horizontal arm) rather than an elbow-up / top-down configuration. The R_DOWN orientation constraint is not being enforced strongly enough by the DLS IK step weighting. The arm hits the lateral face of the box with the EM pad side rather than the EM face top-down.
+
+**Root cause:** `_ik_utils._run_ik` passes orientation error at 0.5× weight (`er * 0.5`) and uses the same damping as position. When the arm is at home (all joints zero), the nearest valid solution from the IK gradient is a near-horizontal arm extended outward — it satisfies the position target but gets a poor orientation. The IK has insufficient orientation weight to reach the elbow-up configuration.
+
+**Impact:** Task 10.1 mp4 and `done` criterion technically pass (proximity sensor reads < 0.025 m because the arm is close to the box's side face), but the grasp is physically wrong.
+
+### Next session — entry point
+
+**Fix IK approach direction before continuing Task 10.3.**
+
+Two options to evaluate:
+1. **Seed pose** — set `qpos` to a known elbow-up configuration (A2≈-90°, A3≈+90°, A5≈-90°) before calling `_run_ik`. IK will then converge from a top-down start and stay in that basin.
+2. **Increase orientation weight** — change `er * 0.5` to `er * 2.0` or higher in `_ik_step` to penalise orientation error more strongly.
+
+Likely need both. After fixing, re-run Tasks 10.1 and 10.2 to regenerate correct mp4s, then continue to 10.3–10.9.
+
+---
 ## Session 2026-05-11 — Phase 9 fix: camera render decoupling + sim loop rate limiter
 
 ### What changed
