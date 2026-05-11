@@ -1,0 +1,25 @@
+# Topic rates — Phase 9 verification
+# Captured: 2026-05-06T17:29:43+03:00
+# Bridge commit: 6d3abf1
+# Workload: bridge only (no demo script)
+
+=== /bridge/status ===
+
+=== /joint_states ===
+
+=== /joint_torques ===
+
+=== /ft_sensor ===
+
+=== /proximity ===
+
+=== /em_state ===
+
+=== /target_contact ===
+
+=== /camera/overhead/image_raw ===
+
+=== /camera/side/image_raw ===
+
+=== /camera/wrist/image_raw ===
+
