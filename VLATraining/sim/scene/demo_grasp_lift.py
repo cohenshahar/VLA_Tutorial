@@ -224,30 +224,47 @@ def main() -> None:
     print(f"    IK {'converged' if ok else 'partial'}, err = {err:.4f} m")
     _sync_ctrl(data, qpas, act_ids)
 
+    # Pre-position object at weld-consistent pose so physics starts with no
+    # large constraint impulse (IK teleports arm; box must follow before step).
+    mujoco.mj_forward(model, data)
+    weld_eid   = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_EQUALITY, "em_weld")
+    em_pad_bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "em_pad")
+    _rel     = model.eq_data[weld_eid, 3:6].copy()
+    _mat_em  = data.xmat[em_pad_bid].reshape(3, 3)
+    _p_em    = data.xpos[em_pad_bid].copy()
+    data.qpos[obj_qpa:obj_qpa + 3] = _p_em + _mat_em @ _rel
+    data.qpos[obj_qpa + 3:obj_qpa + 7] = [1.0, 0.0, 0.0, 0.0]   # upright
+    data.qvel[:] = 0.0
+    mujoco.mj_forward(model, data)
+    print(f"    Box pre-positioned at Z = {data.qpos[obj_qpa + 2]:.3f} m")
+
     # ── 8. Physics settle + FT monitoring ─────────────────────────────────────
-    print(f"\n[8] Lift physics — monitoring FT (ee_fz, threshold {FT_THRESH} N "
+    print(f"\n[8] Lift physics — monitoring FT magnitude (threshold {FT_THRESH} N "
           f"for {FT_CONSEC_NEED} consecutive steps):")
     consec  = 0
     done    = False
     for i in range(3000):
         _physics_step()
-        fz = float(data.sensordata[ft_adr + 2])
-        if abs(fz) > FT_THRESH:
+        fvec = data.sensordata[ft_adr:ft_adr + 3]
+        fmag = float(np.linalg.norm(fvec))
+        if fmag > FT_THRESH:
             consec += 1
         else:
             consec = 0
         if i % 100 == 0:
-            print(f"    step {i:5d}  ee_fz = {fz:+.3f} N  consec = {consec}")
+            fz = float(data.sensordata[ft_adr + 2])
+            print(f"    step {i:5d}  |F| = {fmag:.3f} N  ee_fz = {fz:+.3f} N  consec = {consec}")
         if consec >= FT_CONSEC_NEED:
             done = True
-            print(f"\n    ✅ DONE at step {i}: |ee_fz| = {abs(fz):.3f} N "
+            print(f"\n    ✅ DONE at step {i}: |F| = {fmag:.3f} N "
                   f"exceeded {FT_THRESH} N for {FT_CONSEC_NEED} consecutive steps.")
             _run_n(500)
             break
 
     if not done:
-        fz = float(data.sensordata[ft_adr + 2])
-        print(f"\n    ❌ Did not reach FT criterion.  Final ee_fz = {fz:+.3f} N, "
+        fmag = float(np.linalg.norm(data.sensordata[ft_adr:ft_adr + 3]))
+        fz   = float(data.sensordata[ft_adr + 2])
+        print(f"\n    ❌ Did not reach FT criterion.  Final |F| = {fmag:.3f} N, ee_fz = {fz:+.3f} N, "
               f"consec = {consec}")
 
     # ── Finalise ──────────────────────────────────────────────────────────────
