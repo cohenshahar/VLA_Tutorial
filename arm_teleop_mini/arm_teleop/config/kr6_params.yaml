@@ -1,0 +1,10 @@
+# Joint limits for KR6 (radians). Fill from URDF/MJCF in Phase 6.
+joint_limits:
+  joint_1: { min: -3.14, max:  3.14 }   # TODO Phase 6: real values
+  joint_2: { min: -2.18, max:  0.78 }
+  joint_3: { min: -2.97, max:  2.62 }
+  joint_4: { min: -3.30, max:  3.30 }
+  joint_5: { min: -2.09, max:  2.09 }
+  joint_6: { min: -6.10, max:  6.10 }
+
+home_pose: [0.0, -0.5, 1.2, 0.0, 1.0, 0.0]  # TODO Phase 5: real home

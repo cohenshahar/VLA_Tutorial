@@ -1,0 +1,31 @@
+# Override defaults from keyboard_teleop_node.py
+
+joint_keys:
+  q: [0, +1]   # joint 1 positive
+  a: [0, -1]   # joint 1 negative
+  w: [1, +1]   # joint 2 positive
+  s: [1, -1]   # joint 2 negative
+  e: [2, +1]   # joint 3 positive
+  d: [2, -1]   # joint 3 negative
+  r: [3, +1]   # joint 4 positive
+  f: [3, -1]   # joint 4 negative
+  t: [4, +1]   # joint 5 positive
+  g: [4, -1]   # joint 5 negative
+  y: [5, +1]   # joint 6 positive
+  h: [5, -1]   # joint 6 negative
+
+cartesian_keys:
+  KP_8: [x, +1]   # numpad 8 -> +X
+  KP_2: [x, -1]   # numpad 2 -> -X
+  KP_4: [y, +1]   # numpad 4 -> +Y
+  KP_6: [y, -1]   # numpad 6 -> -Y
+  "+":  [z, +1]   # numpad + -> +Z
+  "-":  [z, -1]   # numpad - -> -Z
+
+misc_keys:
+  m:   frame_toggle      # toggle base <-> tool frame
+  v:   vacuum_toggle     # toggle vacuum on/off (Phase 11)
+  "[": claw_open         # open claw (Phase 12)
+  "]": claw_close        # close claw (Phase 12)
+  "0": home_pose         # go to home pose
+  esc: quit              # exit node

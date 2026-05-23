@@ -1,0 +1,2 @@
+<!-- TODO Phase 12: kr6.xml + two-finger claw at tool0. Two hinge joints for fingers. -->
+<mujoco model="kr6_claw_placeholder"/>
