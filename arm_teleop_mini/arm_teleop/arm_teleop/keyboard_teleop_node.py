@@ -22,7 +22,7 @@ Deadman: if no key event in DEADMAN_TIMEOUT_MS, publish zero command.
 
 Owns topics:
   - PUB  /cmd_joint_vel    std_msgs/Float64MultiArray
-  - PUB  /cmd_ee_vel       geometry_msgs/Twist
+  - PUB  /cmd_ee_vel       geometry_msgs/TwistStamped
   - CALL /vacuum/set       std_srvs/SetBool  (Phase 11)
   - CALL /claw/set         std_srvs/SetBool  (Phase 12)
 """
@@ -36,7 +36,7 @@ import rclpy
 from geometry_msgs.msg import TwistStamped
 from rclpy.node import Node
 from std_msgs.msg import Float64MultiArray
-# from std_srvs.srv import SetBool   # TODO Phase 11
+from std_srvs.srv import SetBool
 
 DEADMAN_TIMEOUT_MS = 200
 JOINT_VEL_STEP = 0.3       # rad/s per held key
@@ -65,7 +65,7 @@ CART_KEYS = {
 
 HELP = (
     "Joint: q/a:J1 w/s:J2 e/d:J3 r/f:J4 t/g:J5 y/h:J6  "
-    "| Cart(numpad): 8/2=X 4/6=Y +/-=Z  m=frame  Esc=quit"
+    "| Cart(numpad): 8/2=X 4/6=Y +/-=Z  m=frame  v=vac  [/]=claw  Esc=quit"
 )
 
 
@@ -77,6 +77,11 @@ class KeyboardTeleopNode(Node):
         self.joint_vel_pub = self.create_publisher(Float64MultiArray, "/cmd_joint_vel", 10)
         self.ee_vel_pub    = self.create_publisher(TwistStamped, "/cmd_ee_vel", 10)
         self.frame = "base"   # Phase 10: toggles between "base" and "tool"
+
+        # ── Gripper state ─────────────────────────────────────────────────
+        self._vacuum_state = False
+        self._vacuum_client = self.create_client(SetBool, "/vacuum/set")
+        self._claw_client   = self.create_client(SetBool, "/claw/set")
 
         # ── Key state: key -> timestamp of last press (seconds) ───────────
         self._key_state: dict[str, float] = {}
@@ -111,10 +116,16 @@ class KeyboardTeleopNode(Node):
                 break
             key = chr(ch) if 0 < ch < 128 else None
             if key == 'm':
-                self._on_frame_toggle()   # one-shot toggle, not a held key
+                self._on_frame_toggle()
                 continue
             if key == 'v':
                 self._on_vacuum_toggle()
+                continue
+            if key == '[':
+                self._on_claw(close=False)
+                continue
+            if key == ']':
+                self._on_claw(close=True)
                 continue
             if key:
                 with self._lock:
@@ -159,10 +170,32 @@ class KeyboardTeleopNode(Node):
         twist_msg.twist.linear.z  = float(cart_vel[2])
         self.ee_vel_pub.publish(twist_msg)
 
+    # ── One-shot key handlers ─────────────────────────────────────────────
     def _on_frame_toggle(self):
         """Handle 'm' keypress — toggle base ↔ tool frame."""
         self.frame = "tool" if self.frame == "base" else "base"
         self.get_logger().info(f"[FRAME] {self.frame}")
+
+    def _on_vacuum_toggle(self):
+        """Handle 'v' keypress — call /vacuum/set with the opposite state."""
+        if not self._vacuum_client.service_is_ready():
+            self.get_logger().warn("Vacuum service not available — is gripper_node running?")
+            return
+        self._vacuum_state = not self._vacuum_state
+        req = SetBool.Request()
+        req.data = self._vacuum_state
+        self._vacuum_client.call_async(req)
+        self.get_logger().info(f"[VACUUM] {'ON' if self._vacuum_state else 'OFF'}")
+
+    def _on_claw(self, close: bool):
+        """Handle '[' (open) or ']' (close) — call /claw/set."""
+        if not self._claw_client.service_is_ready():
+            self.get_logger().warn("Claw service not available — is gripper_node running?")
+            return
+        req = SetBool.Request()
+        req.data = close
+        self._claw_client.call_async(req)
+        self.get_logger().info(f"[CLAW] {'CLOSE' if close else 'OPEN'}")
 
 
 def main(args=None):
@@ -178,37 +211,5 @@ def main(args=None):
         if rclpy.ok():
             rclpy.shutdown()
 
-# *VLA Research | Shahar Cohen | BGU Mechatronics | 2026-05-24*
-        #   self.get_logger().info(f"[FRAME] {self.frame}")
-        pass
 
-    def _on_vacuum_toggle(self):
-        """Handle 'v' keypress — call /vacuum/set with the opposite state."""
-        if not hasattr(self, '_vacuum_client'):
-            from std_srvs.srv import SetBool
-            self._vacuum_client = self.create_client(SetBool, '/vacuum/set')
-            self._vacuum_state  = False
-        if not self._vacuum_client.service_is_ready():
-            self.get_logger().warn('Vacuum service not available')
-            return
-        from std_srvs.srv import SetBool
-        self._vacuum_state = not self._vacuum_state
-        req = SetBool.Request()
-        req.data = self._vacuum_state
-        self._vacuum_client.call_async(req)
-        self.get_logger().info(f"[VACUUM] {'ON' if self._vacuum_state else 'OFF'}")
-
-    def _on_claw(self, close: bool):
-        """Handle '[' or ']' — call /claw/set with close=True/False."""
-        # TODO Phase 12
-        pass
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = KeyboardTeleopNode()
-    try:
-        rclpy.spin(node)
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+# *VLA Research | Shahar Cohen | BGU Mechatronics | 2026-05-25*
