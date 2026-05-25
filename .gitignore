@@ -19,6 +19,9 @@ VLATraining/sim/outputs/_em_pickup_frames/
 VLATraining/vla_ws/build/
 VLATraining/vla_ws/install/
 VLATraining/vla_ws/log/
+arm_teleop_mini/build/
+arm_teleop_mini/install/
+arm_teleop_mini/log/
 
 # OS
 .DS_Store
