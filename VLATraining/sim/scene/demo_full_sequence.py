@@ -57,7 +57,7 @@ OUT_VIDEO = str(_SIM_DIR / "outputs" / f"demo_full_sequence_{_DATE}.mp4")
 TABLE_Z    = 0.85
 BOX_HALF   = 0.05
 BOX_POS    = np.array([0.76, 0.0, TABLE_Z + BOX_HALF])
-TARGET_XY  = np.array([0.0, 0.0])
+TARGET_XY  = np.array([0.5, 0.4])
 TARGET_Z   = 0.86
 ARM_BASE   = np.array([0.0, -0.3])
 

@@ -44,7 +44,7 @@ OUT_VIDEO = str(_SIM_DIR / "outputs" / f"demo_place_near_{_DATE}.mp4")
 TABLE_Z     = 0.85
 BOX_HALF    = 0.05
 BOX_POS     = np.array([0.76, 0.0, TABLE_Z + BOX_HALF])   # box centre at rest
-TARGET_XY   = np.array([0.0, 0.0])                        # target zone XY
+TARGET_XY   = np.array([0.5, 0.4])                        # target zone XY
 TARGET_Z    = 0.86                                         # target zone top surface
 ARM_BASE    = np.array([0.0, -0.3])
 

@@ -104,7 +104,7 @@
       15 cm × 15 cm × 2 cm tall (half-sizes: 0.075, 0.075, 0.01).
     -->
     <!-- Target zone: far side of table, arm must rotate A1 ~90° to reach it -->
-    <body name="target_zone" pos="0 0 0.86">
+    <body name="target_zone" pos="0.5 0.4 0.86">
       <geom name="target_geom"
             type="box"
             size="0.075 0.1 0.01"
