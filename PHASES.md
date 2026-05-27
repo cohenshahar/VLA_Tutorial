@@ -2,7 +2,12 @@
 
 **Project:** VLA Research Simulation | KUKA KR6 + MuJoCo + ROS2  
 **Author:** Shahar Cohen | BGU Mechatronics MSc  
-**Last updated:** 2026-05-11
+**Last updated:** 2026-05-27
+**Repo:** cohenshahar/VLA_Tutorial
+**Owner:** Shahar Cohen (shaharag@post.bgu.ac.il)
+
+This file is read by Claude Code at the start of every session in this repo.
+Read it end-to-end before writing any code.
 
 ---
 
@@ -20,19 +25,8 @@
 | 7 | Sensor Suite | ✅ Done | Joint pos/vel/torque, F/T, proximity, `SensorLogger` CSV |
 | 8 | Camera Setup | ✅ Done | `cam_overhead`, `cam_side`, `cam_wrist`, `CameraPublisher`, multicam video |
 | 9 | ROS2 Bridge | ✅ Characterized | 10 topics live + measured: RTF 0.756 with cameras (above 0.70 floor), cameras at 6 Hz ✅, high-freq topics ~75 Hz (GIL-bound, Phase 10) |
-| 10 | Task Tree Manager | 🔜 Next | `TaskNode`, `TaskTreeManager`, 3-subtask pick-and-place sequence |
-| 11 | OpenVLA on Kaggle | 🔜 Next | 7-element action output from openvla/openvla-7b at ~1–3 Hz |
-
----
-
-## Next actions (Phase 10 entry point)
-
-1. Create `task_tree/task_node.py` — `TaskNode` dataclass (name, language_instruction, primitives, postcondition_fn, status)
-2. Create `task_tree/pick_and_place_tree.py` — root node + 3 child subtasks with postcondition lambdas
-3. Create `task_tree/task_tree_manager.py` — `TaskTreeManager` with `step()`, `get_current_instruction()`, `get_status_dict()`
-4. Connect manager to `SensorLogger` via `step_from_logger(logger)`
-
-See full task details in [docs/sim_instructions.md](docs/sim_instructions.md) — Phase 10 starts at Task 10.1.
+| 10 | Task Tree Manager | ✅ Done | `TaskNode`, `TaskTreeManager`, 7-subtask pick-and-place tree, integration test |
+| 11 | OpenVLA / Local Octo | 🔜 Next | Real local closed-loop VLA control loop via JAX model |
 
 ---
 
