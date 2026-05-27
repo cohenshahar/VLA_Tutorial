@@ -27,6 +27,7 @@ import threading
 from pathlib import Path
 
 import mujoco
+import mujoco.viewer
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -205,6 +206,15 @@ class BridgeNode(Node):
 
         # ── simulation thread ─────────────────────────────────────────
         self._running = True
+
+        # Launch passive viewer to see the arm moving in real time
+        try:
+            self._viewer = mujoco.viewer.launch_passive(self._model, self._data)
+            self.get_logger().info('MuJoCo passive viewer started successfully')
+        except Exception as exc:
+            self._viewer = None
+            self.get_logger().warn(f'Could not start MuJoCo passive viewer (running headlessly): {exc}')
+
         self._sim_thread = threading.Thread(
             target=self._sim_loop, daemon=True)
         self._sim_thread.start()
@@ -234,6 +244,8 @@ class BridgeNode(Node):
                 mujoco.mj_step(self._model, self._data)
             # Yield GIL — lets the ROS2 executor fire pending timer callbacks
             time.sleep(0)
+            if self._viewer is not None and self._viewer.is_running():
+                self._viewer.sync()
             # Sleep remainder of timestep budget to target RTF ≈ 1.0
             elapsed = time.monotonic() - t0
             remaining = target_dt - elapsed
@@ -388,6 +400,8 @@ class BridgeNode(Node):
 
     def destroy_node(self):
         self._running = False
+        if hasattr(self, '_viewer') and self._viewer is not None:
+            self._viewer.close()
         super().destroy_node()
 
 

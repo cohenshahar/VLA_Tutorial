@@ -1,5 +1,5 @@
 <mujoco model="kuka_kr6r900sixx">
-  <compiler angle="radian" meshdir="/home/shahar/Desktop/phase4/VLATraining/sim/assets/urdf/meshes/"/>
+  <compiler angle="radian" meshdir="../urdf/meshes/"/>
 
   <asset>
     <mesh name="base_link" content_type="model/stl" file="base_link.stl"/>

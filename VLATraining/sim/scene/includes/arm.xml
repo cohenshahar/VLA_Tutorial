@@ -14,7 +14,7 @@
   ─────────────────────────────────────────────────────────────────────────
 -->
 <mujoco>
-  <compiler meshdir="/home/shahar/Desktop/phase4/VLATraining/sim/assets/urdf/meshes/" angle="radian"/>
+  <compiler meshdir="../assets/urdf/meshes/" angle="radian"/>
 
   <asset>
     <mesh name="base_link" content_type="model/stl" file="base_link.stl"/>
