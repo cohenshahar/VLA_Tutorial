@@ -4,6 +4,24 @@ This file documents every session's changes, design decisions, and current state
 Read this at the start of a new session to understand what was done and why.
 
 ---
+## Session 2026-05-27 — Mechatronic Snapping & Weld Orientation Fixes
+
+### What changed
+
+| File | Type | Summary |
+|------|------|---------|
+| `scene/em_controller.py` | Fixed | Restored `q_rel` to $-90^\circ$ Y (`[0.70710678, 0.0, -0.70710678, 0.0]`) to correctly snap the box *outside* the arm (flush against the face) rather than *inside* it. |
+| `scene/demo_grasp_lift.py` | Fixed | Replaced hardcoded flat upright box orientation (`[1.0, 0.0, 0.0, 0.0]`) with exact dynamically calculated weld-consistent orientation `_q_obj = q_em * q_rel`. |
+
+### Bug fixes this session
+
+**Box snapped inside the arm (Issue 1):**
+Changing `q_rel` to $+90^\circ$ Y had mapped the box local $+Z$ axis to `em_pad` $+X$ (outward). Since their outward normals pointed in the same direction, the box center snapped behind the EM face (inside the arm links). Restoring `q_rel` to $-90^\circ$ Y aligned $+Z$ with $-X$ (opposite directions), correctly placing the box center $5\text{ cm}$ in front of the EM face (perfectly flush, completely outside the arm) ✅.
+
+**Weld held by edge / tilted due to orientation conflict (Issue 2):**
+Pre-positioning the box with a hardcoded flat upright posture (`[1, 0, 0, 0]`) created a massive constraint conflict with the weld's expectation of a $-90^\circ$ relative orientation. This forced the box to tilt and clash when physics stepped. Dynamically multiplying the active `relquat` with the `em_pad` quaternion resolved the conflict, achieving clean, flush, stable grasping and 100% successful mechatronic lifecycles (weld activates, arm transports, weld deactivates, box drops cleanly to floor) ✅.
+
+---
 ## Session 2026-05-11 — Phase 10, Tasks 10.1–10.2 (partial)
 
 ### What changed

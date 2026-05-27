@@ -233,7 +233,12 @@ def main() -> None:
     _mat_em  = data.xmat[em_pad_bid].reshape(3, 3)
     _p_em    = data.xpos[em_pad_bid].copy()
     data.qpos[obj_qpa:obj_qpa + 3] = _p_em + _mat_em @ _rel
-    data.qpos[obj_qpa + 3:obj_qpa + 7] = [1.0, 0.0, 0.0, 0.0]   # upright
+    # Compute the weld-consistent orientation: q_obj = q_em * q_rel
+    _q_rel = model.eq_data[weld_eid, 6:10].copy()
+    _q_em  = data.xquat[em_pad_bid].copy()
+    _q_obj = np.zeros(4)
+    mujoco.mju_mulQuat(_q_obj, _q_em, _q_rel)
+    data.qpos[obj_qpa + 3:obj_qpa + 7] = _q_obj
     data.qvel[:] = 0.0
     mujoco.mj_forward(model, data)
     print(f"    Box pre-positioned at Z = {data.qpos[obj_qpa + 2]:.3f} m")

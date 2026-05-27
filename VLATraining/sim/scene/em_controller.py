@@ -160,28 +160,47 @@ def em_activate(model: mujoco.MjModel,
 
     mat_em = data.xmat[em_pad_id].reshape(3, 3)
     p_em   = data.xpos[em_pad_id].copy()
+    q_em   = data.xquat[em_pad_id].copy()
 
     # World position of em_contact_site
     p_site = p_em + mat_em @ _EM_SITE_LOCAL
 
-    # Ideal object centre: top site coincides with EM contact site.
-    # top_local is the site offset in body frame — when body is world-upright,
-    # this is simply [0, 0, half_height] in world frame.
-    p_obj_ideal = p_site - top_local
+    # Calculate the ideal relative orientation between object frame and em_pad frame.
+    # To keep the box's top face parallel to the EM pad face, the box Z axis
+    # must align with the EM pad local X axis. This corresponds to a constant rotation
+    # of -90 degrees about the Y axis.
+    # Quaternion corresponding to -90 deg rotation about Y: [w, x, y, z] = [0.70710678, 0.0, -0.70710678, 0.0]
+    q_rel = np.array([0.70710678, 0.0, -0.70710678, 0.0])
+
+    # Ideal world orientation of the object (aligned flush with the EM pad):
+    #   q_obj_ideal = q_em * q_rel
+    q_obj_ideal = np.zeros(4)
+    mujoco.mju_mulQuat(q_obj_ideal, q_em, q_rel)
+
+    # Convert ideal world orientation to a rotation matrix
+    mat_obj_ideal = np.zeros(9)
+    mujoco.mju_quat2Mat(mat_obj_ideal, q_obj_ideal)
+    mat_obj_ideal = mat_obj_ideal.reshape(3, 3)
+
+    # Ideal world position of the object (top site coincides with EM contact site).
+    # Correctly offset box along its own rotated Z axis normal to prevent clipping.
+    p_obj_ideal = p_site - mat_obj_ideal @ top_local
 
     # Snap object to ideal pose, zero velocity
     qpa = model.jnt_qposadr[obj_jnt]
     doa = model.jnt_dofadr[obj_jnt]
     data.qpos[qpa:qpa + 3] = p_obj_ideal
-    data.qpos[qpa + 3:qpa + 7] = _UPRIGHT_QUAT   # world-upright for both box and sphere
+    data.qpos[qpa + 3:qpa + 7] = q_obj_ideal
     data.qvel[doa:doa + 6] = 0.0
     mujoco.mj_forward(model, data)
 
-    # Relative pose in em_pad frame for weld constraint:
-    #   rel_pos  = R_em.T @ (p_obj_ideal − p_em)  − R_em.T @ top_local  (via EM site)
-    rel_pos  = _EM_SITE_LOCAL - mat_em.T @ top_local
+    # Relative pose in em_pad frame for the weld constraint:
+    rel_pos = mat_em.T @ (p_obj_ideal - p_em)
+    
+    # Calculate the exact relative quaternion from our snapped state:
+    q_em_inv = np.array([q_em[0], -q_em[1], -q_em[2], -q_em[3]])
     rel_quat = np.zeros(4)
-    mujoco.mju_negQuat(rel_quat, data.xquat[em_pad_id])
+    mujoco.mju_mulQuat(rel_quat, q_em_inv, q_obj_ideal)
 
     assert abs(np.linalg.norm(rel_quat) - 1.0) < 1e-6, \
         f"rel_quat not unit: norm={np.linalg.norm(rel_quat)}"
