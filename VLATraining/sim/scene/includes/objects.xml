@@ -114,8 +114,9 @@
 
       <!-- Site for touch sensor — at the top face of the target pad -->
       <site name="target_touch_site"
+            type="box"
             pos="0 0 0.01"
-            size="0.005"
+            size="0.075 0.1 0.002"
             rgba="1 1 0 0"/>
     </body><!-- target_zone -->
 
